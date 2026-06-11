@@ -65,7 +65,7 @@ async function loadStatus() {
   if (!ok || !body) return;
   const s = body.lastSync;
   const rows = [];
-  rows.push(kv('API key configured', body.apiConfigured ? '✓ yes' : '⚠ no — set API_FOOTBALL_KEY'));
+  rows.push(kv('Data source', body.source || 'ESPN (free public feed)'));
   if (s) {
     rows.push(kv('Status', s.status));
     rows.push(kv('When', formatAdelaide(s.finished_at || s.started_at) || '—'));

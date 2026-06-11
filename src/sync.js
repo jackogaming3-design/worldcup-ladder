@@ -2,77 +2,125 @@
 
 const { query, withTransaction } = require('./db');
 const { config } = require('./config');
-const { isCompleted } = require('./scoring');
 
-// Winner from API-Football's boolean flags (accounts for ET + penalties).
-function deriveWinner(fx) {
-  const h = fx.teams && fx.teams.home;
-  const a = fx.teams && fx.teams.away;
-  if (h && h.winner === true) return h.name;
-  if (a && a.winner === true) return a.name;
-  return null;
+// ----------------------------------------------------------------------------
+// Data source: ESPN's free public scoreboard for the FIFA World Cup.
+//   GET {espnBase}/scoreboard?dates=YYYYMMDD-YYYYMMDD
+// No API key or signup required. We scan the tournament window in weekly chunks
+// and dedupe events by id.
+// ----------------------------------------------------------------------------
+
+const STAGE_LABELS = {
+  'group-stage': 'Group Stage',
+  'round-of-32': 'Round of 32',
+  'round-of-16': 'Round of 16',
+  quarterfinals: 'Quarterfinals',
+  'quarter-finals': 'Quarterfinals',
+  semifinals: 'Semifinals',
+  'semi-finals': 'Semifinals',
+  final: 'Final',
+  'third-place': 'Third Place',
+  '3rd-place': 'Third Place',
+};
+
+function prettyStage(slug) {
+  if (!slug) return null;
+  return (
+    STAGE_LABELS[slug] ||
+    String(slug).replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
-// Fetch every fixture for the configured league + season (handles paging).
-async function fetchFixtures() {
-  if (!config.apiKey) {
-    throw new Error('API_FOOTBALL_KEY is not set — cannot sync results.');
+function ymd(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${day}`;
+}
+
+function parseYmd(s) {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
+
+function toInt(v) {
+  if (v == null || v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Fetch all World Cup events across the configured window (weekly chunks).
+async function fetchEvents() {
+  const season = parseInt(config.season, 10) || new Date().getUTCFullYear();
+  const start = parseYmd(config.windowStart) || new Date(Date.UTC(season, 5, 1)); // 1 Jun
+  const end = parseYmd(config.windowEnd) || new Date(Date.UTC(season, 7, 1)); // 1 Aug
+
+  const headers = { 'User-Agent': 'worldcup-ladder/1.0 (+ladder)' };
+  const byId = new Map();
+
+  let cursor = new Date(start);
+  let guard = 0;
+  while (cursor <= end && guard < 60) {
+    guard += 1;
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setUTCDate(chunkEnd.getUTCDate() + 6);
+    const rangeEnd = chunkEnd > end ? end : chunkEnd;
+
+    const url = `${config.espnBase}/scoreboard?dates=${ymd(cursor)}-${ymd(rangeEnd)}`;
+    const resp = await fetch(url, { headers });
+    if (resp.ok) {
+      const data = await resp.json();
+      for (const ev of data.events || []) byId.set(String(ev.id), ev);
+    } else {
+      console.warn(`[sync] ESPN chunk ${ymd(cursor)} returned HTTP ${resp.status}`);
+    }
+
+    cursor = new Date(chunkEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
-  const headers = { [config.apiKeyHeader]: config.apiKey };
-  const all = [];
-  let page = 1;
-  let totalPages = 1;
-
-  do {
-    const url =
-      `${config.apiBaseUrl}/fixtures` +
-      `?league=${encodeURIComponent(config.leagueId)}` +
-      `&season=${encodeURIComponent(config.season)}` +
-      `&page=${page}`;
-
-    const resp = await fetch(url, { headers });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`API-Football HTTP ${resp.status}: ${body.slice(0, 300)}`);
-    }
-
-    const data = await resp.json();
-    const errs = data.errors;
-    const hasErrors = errs && (Array.isArray(errs) ? errs.length : Object.keys(errs).length);
-    if (hasErrors) {
-      throw new Error(`API-Football returned errors: ${JSON.stringify(errs).slice(0, 300)}`);
-    }
-
-    all.push(...(data.response || []));
-    totalPages = (data.paging && data.paging.total) || 1;
-    page += 1;
-  } while (page <= totalPages);
-
-  return all;
+  return [...byId.values()];
 }
 
-function normaliseFixture(fx) {
-  const status = fx.fixture && fx.fixture.status && fx.fixture.status.short;
+// Map an ESPN event to our match shape. Returns null if it can't be parsed.
+function normaliseEvent(ev) {
+  const comp = (ev.competitions || [])[0] || {};
+  const st = (ev.status || {}).type || {};
+  const cs = comp.competitors || [];
+  const home = cs.find((c) => c.homeAway === 'home');
+  const away = cs.find((c) => c.homeAway === 'away');
+  if (!home || !away || !home.team || !away.team) return null;
+
+  const winnerComp = cs.find((c) => c.winner === true);
+  const hadShootout = cs.some((c) => c.shootoutScore != null);
+  const name = `${st.name || ''} ${st.detail || ''}`;
+
+  let status;
+  if (hadShootout) status = 'PEN';
+  else if (/AET|EXTRA/i.test(name)) status = 'AET';
+  else status = 'FT';
+
   return {
-    apiFixtureId: String(fx.fixture.id),
-    homeTeam: fx.teams.home.name,
-    awayTeam: fx.teams.away.name,
-    homeGoals: fx.goals.home,
-    awayGoals: fx.goals.away,
-    homePen: fx.score && fx.score.penalty ? fx.score.penalty.home : null,
-    awayPen: fx.score && fx.score.penalty ? fx.score.penalty.away : null,
-    winnerTeam: deriveWinner(fx),
+    apiFixtureId: String(ev.id),
+    homeTeam: home.team.displayName,
+    awayTeam: away.team.displayName,
+    homeGoals: toInt(home.score),
+    awayGoals: toInt(away.score),
+    homePen: home.shootoutScore != null ? Number(home.shootoutScore) : null,
+    awayPen: away.shootoutScore != null ? Number(away.shootoutScore) : null,
+    winnerTeam: winnerComp && winnerComp.team ? winnerComp.team.displayName : null,
     status,
-    round: fx.league && fx.league.round,
-    matchDate: fx.fixture && fx.fixture.date,
-    raw: fx,
+    completed: st.completed === true,
+    round: prettyStage((ev.season || {}).slug),
+    matchDate: ev.date || null,
+    raw: ev,
   };
 }
 
 // Upsert by fixture id. The WHERE clause means updated_at only moves when
-// something material actually changed, so "last updated" stays meaningful and
-// we don't count no-op rows as processed. Returns true if inserted or changed.
+// something material changed, so "last updated" stays meaningful and we don't
+// count no-op rows as processed. Returns true if inserted or changed.
 async function upsertMatch(client, m) {
   const res = await client.query(
     `INSERT INTO matches
@@ -105,7 +153,6 @@ async function upsertMatch(client, m) {
       JSON.stringify(m.raw),
     ]
   );
-  // No row returned => the DO UPDATE WHERE blocked a no-op update.
   return res.rows.length > 0;
 }
 
@@ -119,21 +166,21 @@ async function runSync({ trigger = 'manual' } = {}) {
   const logId = logRes.rows[0].id;
 
   try {
-    const fixtures = await fetchFixtures();
+    const events = await fetchEvents();
     let completed = 0;
     let processed = 0;
 
     await withTransaction(async (client) => {
-      for (const fx of fixtures) {
-        const m = normaliseFixture(fx);
-        if (!isCompleted(m.status)) continue;
+      for (const ev of events) {
+        const m = normaliseEvent(ev);
+        if (!m || !m.completed) continue;
         if (m.homeGoals == null || m.awayGoals == null) continue;
         completed += 1;
         if (await upsertMatch(client, m)) processed += 1;
       }
     });
 
-    const message = `Fetched ${fixtures.length} fixtures · ${completed} completed · ${processed} new/updated.`;
+    const message = `Scanned ${events.length} fixtures · ${completed} completed · ${processed} new/updated.`;
     await query(
       `UPDATE sync_logs
           SET status='success', message=$2, fixtures_processed=$3, finished_at=NOW()
@@ -141,7 +188,7 @@ async function runSync({ trigger = 'manual' } = {}) {
       [logId, message, processed]
     );
     console.log('[sync]', message);
-    return { ok: true, fixtures: fixtures.length, completed, processed, message, logId };
+    return { ok: true, fixtures: events.length, completed, processed, message, logId };
   } catch (err) {
     const message = String(err && err.message ? err.message : err).slice(0, 500);
     await query(
@@ -163,4 +210,4 @@ async function lastSync() {
   return res.rows[0] || null;
 }
 
-module.exports = { runSync, lastSync, fetchFixtures, normaliseFixture, deriveWinner };
+module.exports = { runSync, lastSync, fetchEvents, normaliseEvent, prettyStage };

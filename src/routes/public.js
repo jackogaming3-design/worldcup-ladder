@@ -4,7 +4,6 @@ const express = require('express');
 const { query } = require('../db');
 const { computeLadder } = require('../ladder');
 const { lastSync } = require('../sync');
-const { config } = require('../config');
 
 const router = express.Router();
 
@@ -23,7 +22,8 @@ router.get('/ladder', async (req, res, next) => {
       lastUpdated,
       lastSync: sync,
       scoring: { win: 3, draw: 1, loss: 0, penaltyRule: 'shootout-winner-wins' },
-      apiConfigured: Boolean(config.apiKey),
+      source: 'ESPN (free public feed)',
+      apiConfigured: true,
       playerLadder: ladder.playerLadder,
       teamLadder: ladder.teamLadder,
       recentMatches: ladder.recentMatches,

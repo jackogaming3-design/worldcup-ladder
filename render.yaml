@@ -1,9 +1,11 @@
 # Render Blueprint — deploys the web service + a managed Postgres database.
 # In the Render dashboard: New → Blueprint → connect this repo → Apply.
-# Then set the two secret values (API_FOOTBALL_KEY, ADMIN_PASSWORD) when prompted.
+# Then set ONE secret value (ADMIN_PASSWORD) when prompted — that's it.
 #
-# Scheduled syncing is handled for FREE by .github/workflows/sync.yml (GitHub
-# Actions). If you'd rather use a Render Cron Job (paid), see the README.
+# Results come from ESPN's free public World Cup feed, so there is NO data API
+# key to configure. Scheduled syncing is handled for free by
+# .github/workflows/sync.yml (GitHub Actions); see the README for a paid Render
+# Cron alternative.
 
 databases:
   - name: worldcup-ladder-db
@@ -25,17 +27,9 @@ services:
           property: connectionString
       - key: NODE_ENV
         value: production
-      - key: API_FOOTBALL_BASE_URL
-        value: https://v3.football.api-sports.io
-      - key: API_FOOTBALL_KEY_HEADER
-        value: x-apisports-key
-      - key: WORLD_CUP_LEAGUE_ID
-        value: "1"
       - key: WORLD_CUP_SEASON
         value: "2026"
-      # Secrets — set these in the dashboard (not stored in the repo):
-      - key: API_FOOTBALL_KEY
-        sync: false
+      # Secret — set this in the dashboard (not stored in the repo):
       - key: ADMIN_PASSWORD
         sync: false
       # Auto-generated strong secrets:

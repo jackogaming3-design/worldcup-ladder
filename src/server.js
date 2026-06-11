@@ -19,7 +19,7 @@ async function main() {
   app.listen(config.port, () => {
     console.log(`[server] 2026 World Cup Live Ladder listening on :${config.port} (${config.nodeEnv})`);
     if (!config.adminPassword) console.warn('[server] ADMIN_PASSWORD not set — admin login is disabled.');
-    if (!config.apiKey) console.warn('[server] API_FOOTBALL_KEY not set — result sync is disabled until configured.');
+    console.log('[server] Result source: ESPN free public feed (no API key required).');
   });
 }
 

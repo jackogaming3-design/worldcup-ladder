@@ -40,7 +40,7 @@ router.use(requireAdmin);
 // GET /api/admin/status
 router.get('/status', async (req, res, next) => {
   try {
-    res.json({ lastSync: await lastSync(), apiConfigured: Boolean(config.apiKey) });
+    res.json({ lastSync: await lastSync(), source: 'ESPN (free public feed)' });
   } catch (err) {
     next(err);
   }

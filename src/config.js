@@ -13,12 +13,14 @@ const config = {
 
   databaseUrl: process.env.DATABASE_URL || '',
 
-  // API-Football
-  apiKey: process.env.API_FOOTBALL_KEY || '',
-  apiBaseUrl: (process.env.API_FOOTBALL_BASE_URL || 'https://v3.football.api-sports.io').replace(/\/+$/, ''),
-  apiKeyHeader: (process.env.API_FOOTBALL_KEY_HEADER || 'x-apisports-key').toLowerCase(),
-  leagueId: process.env.WORLD_CUP_LEAGUE_ID || '1',
+  // Data source: ESPN's free public World Cup feed (no API key required).
+  espnBase: (process.env.ESPN_BASE_URL || 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world')
+    .replace(/\/+$/, ''),
   season: process.env.WORLD_CUP_SEASON || '2026',
+  // Optional YYYYMMDD overrides for the date window scanned each sync.
+  // Defaults to 1 Jun – 1 Aug of the season year, which brackets the tournament.
+  windowStart: process.env.WC_WINDOW_START || '',
+  windowEnd: process.env.WC_WINDOW_END || '',
 
   // Security
   adminPassword: process.env.ADMIN_PASSWORD || '',
