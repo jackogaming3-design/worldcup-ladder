@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Commissioner Controls · 2026 World Cup Live Ladder</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div class="hero-titles">
+          <h1>🛠️ Commissioner Controls</h1>
+          <p class="subtitle">2026 World Cup Live Ladder</p>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-ghost" href="/">← Back to ladder</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap admin-main">
+    <!-- Login -->
+    <section id="login" class="card login-card" hidden>
+      <h2>Commissioner login</h2>
+      <p class="hint">Enter the admin password to manage teams and results.</p>
+      <form id="login-form">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required />
+        <div class="row-actions">
+          <button class="btn btn-primary" type="submit">Log in</button>
+        </div>
+        <p id="login-error" class="hint" style="color:var(--red)"></p>
+      </form>
+    </section>
+
+    <!-- Panel -->
+    <div id="panel" hidden>
+      <div class="card">
+        <div class="admin-bar">
+          <div>
+            <h2>Welcome, Commissioner</h2>
+            <p class="hint" style="margin:0">Changes to picks never touch results. Syncing never touches picks.</p>
+          </div>
+          <button id="logout-btn" class="btn btn-ghost" style="color:var(--ink);border-color:var(--line)">Log out</button>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>Last sync</h2>
+        <div id="sync-status"></div>
+        <div class="row-actions">
+          <button id="sync-btn" class="btn btn-primary">⟳ Sync Latest Results</button>
+        </div>
+        <p id="sync-result" class="hint"></p>
+      </section>
+
+      <section class="card">
+        <h2>Team assignments</h2>
+        <p class="hint">Each player owns two teams. Edit a country name to swap a team, or change who owns it. Match history is preserved.</p>
+        <div id="assign-rows"></div>
+        <div class="row-actions">
+          <button id="save-assign" class="btn btn-primary">Save assignments</button>
+          <button id="reload-assign" class="btn btn-ghost" style="color:var(--ink);border-color:var(--line)">Reset form</button>
+        </div>
+        <p id="assign-result" class="hint"></p>
+      </section>
+
+      <section class="card danger">
+        <h2>Danger zone — reset results</h2>
+        <p class="hint">Deletes all stored match results and recalculates the ladder from scratch. Players and team ownership are kept. Type <strong>RESET</strong> to confirm.</p>
+        <div class="assign-row" style="grid-template-columns:1fr auto">
+          <input type="text" id="reset-confirm" placeholder="Type RESET to enable" />
+          <button id="reset-btn" class="btn btn-danger" disabled>Clear results</button>
+        </div>
+        <p id="reset-result" class="hint"></p>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

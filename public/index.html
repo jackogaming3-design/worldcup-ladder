@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2026 World Cup Live Ladder</title>
+  <meta name="description" content="Jacko, CAVS, Bayley and Bobby's World Cup draft ladder. Four players, two teams each, every result matters." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div class="hero-titles">
+          <h1>🏆 2026 World Cup Live Ladder</h1>
+          <p class="subtitle">Four players. Two teams each. Every World Cup result matters.</p>
+          <p class="subtitle-2">Jacko, CAVS, Bayley &amp; Bobby's World Cup draft ladder</p>
+        </div>
+        <div class="hero-actions">
+          <span class="scoring-pill">Scoring · Win&nbsp;3 · Draw&nbsp;1 · Loss&nbsp;0</span>
+          <div id="commish-area" class="commish-area"></div>
+        </div>
+      </div>
+      <div id="status-bar" class="status-bar"></div>
+    </div>
+  </header>
+
+  <main class="wrap" id="main">
+    <div id="empty-banner" class="empty-banner" hidden></div>
+
+    <section class="section">
+      <h2 class="section-title">🥇 Player Leaderboard</h2>
+      <div id="player-leaderboard" class="player-cards"></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">📊 Team Ladder</h2>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table id="team-ladder" class="ladder-table"></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">🧩 Player Breakdown</h2>
+      <div id="player-breakdown" class="breakdown-grid"></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">⚽ Recent Results</h2>
+      <div id="recent-results" class="results-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>Built for the 2026 World Cup Draft · Scores sync automatically every morning.</p>
+      <p class="credits">Better Support SA · NeueStudio · Taylor</p>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

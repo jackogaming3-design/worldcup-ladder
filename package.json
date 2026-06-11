@@ -1,0 +1,22 @@
+{
+  "name": "worldcup-2026-live-ladder",
+  "version": "1.0.0",
+  "description": "2026 World Cup Live Ladder — a 4-player snake-draft ladder that auto-updates from real World Cup results.",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "sync": "node scripts/sync-cli.js",
+    "migrate": "node scripts/migrate-cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  },
+  "license": "MIT"
+}
