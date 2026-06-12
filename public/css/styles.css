@@ -223,6 +223,30 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
 .danger h2 { color: var(--red); }
 .admin-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 
+/* ---------- Upcoming highlight + What Could Have Been ---------- */
+.section-sub { color: var(--muted); font-size: 0.88rem; margin: -8px 0 12px; }
+
+.upcoming-card {
+  background: linear-gradient(135deg, #fff7ed, #fef2f2);
+  border: 1px solid #fed7aa; border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 16px 18px; text-align: center;
+}
+.upcoming-card.empty {
+  background: var(--surface); border-color: var(--line);
+  color: var(--muted); text-align: left; font-size: 0.9rem; box-shadow: var(--shadow-sm);
+}
+.upcoming-label {
+  font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: #c2410c; font-weight: 800;
+}
+.upcoming-teams {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  font-size: clamp(1.1rem, 4vw, 1.5rem); font-weight: 800; margin: 8px 0 4px; flex-wrap: wrap;
+}
+.upcoming-teams .vs { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+.upcoming-owners { font-weight: 700; color: var(--brand-3); font-size: 0.92rem; }
+.upcoming-meta { color: var(--muted); font-size: 0.85rem; margin-top: 5px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
   .hero-top { flex-direction: column; }

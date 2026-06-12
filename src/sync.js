@@ -7,7 +7,8 @@ const { config } = require('./config');
 // Data source: ESPN's free public scoreboard for the FIFA World Cup.
 //   GET {espnBase}/scoreboard?dates=YYYYMMDD-YYYYMMDD
 // No API key or signup required. We scan the tournament window in weekly chunks
-// and dedupe events by id.
+// and dedupe events by id. Both finished AND upcoming fixtures are stored so the
+// app can show the ladder (from finished games) and upcoming-clash highlights.
 // ----------------------------------------------------------------------------
 
 const STAGE_LABELS = {
@@ -84,6 +85,8 @@ async function fetchEvents() {
 }
 
 // Map an ESPN event to our match shape. Returns null if it can't be parsed.
+// Finished games carry a result; upcoming/live games are stored with no result
+// and status NS (not started) / LIVE so they can power upcoming highlights.
 function normaliseEvent(ev) {
   const comp = (ev.competitions || [])[0] || {};
   const st = (ev.status || {}).type || {};
@@ -92,26 +95,43 @@ function normaliseEvent(ev) {
   const away = cs.find((c) => c.homeAway === 'away');
   if (!home || !away || !home.team || !away.team) return null;
 
+  const completed = st.completed === true;
   const winnerComp = cs.find((c) => c.winner === true);
   const hadShootout = cs.some((c) => c.shootoutScore != null);
-  const name = `${st.name || ''} ${st.detail || ''}`;
 
   let status;
-  if (hadShootout) status = 'PEN';
-  else if (/AET|EXTRA/i.test(name)) status = 'AET';
-  else status = 'FT';
+  let homeGoals = null;
+  let awayGoals = null;
+  let homePen = null;
+  let awayPen = null;
+  let winnerTeam = null;
+
+  if (completed) {
+    homeGoals = toInt(home.score);
+    awayGoals = toInt(away.score);
+    homePen = home.shootoutScore != null ? Number(home.shootoutScore) : null;
+    awayPen = away.shootoutScore != null ? Number(away.shootoutScore) : null;
+    winnerTeam = winnerComp && winnerComp.team ? winnerComp.team.displayName : null;
+    const name = `${st.name || ''} ${st.detail || ''}`;
+    if (hadShootout) status = 'PEN';
+    else if (/AET|EXTRA/i.test(name)) status = 'AET';
+    else status = 'FT';
+  } else {
+    // Not finished: a scheduled or in-progress fixture with no stored result.
+    status = st.state === 'in' ? 'LIVE' : 'NS';
+  }
 
   return {
     apiFixtureId: String(ev.id),
     homeTeam: home.team.displayName,
     awayTeam: away.team.displayName,
-    homeGoals: toInt(home.score),
-    awayGoals: toInt(away.score),
-    homePen: home.shootoutScore != null ? Number(home.shootoutScore) : null,
-    awayPen: away.shootoutScore != null ? Number(away.shootoutScore) : null,
-    winnerTeam: winnerComp && winnerComp.team ? winnerComp.team.displayName : null,
+    homeGoals,
+    awayGoals,
+    homePen,
+    awayPen,
+    winnerTeam,
     status,
-    completed: st.completed === true,
+    completed,
     round: prettyStage((ev.season || {}).slug),
     matchDate: ev.date || null,
     raw: ev,
@@ -146,6 +166,7 @@ async function upsertMatch(client, m) {
         OR  matches.home_pen    IS DISTINCT FROM EXCLUDED.home_pen
         OR  matches.away_pen    IS DISTINCT FROM EXCLUDED.away_pen
         OR  matches.winner_team IS DISTINCT FROM EXCLUDED.winner_team
+        OR  matches.match_date  IS DISTINCT FROM EXCLUDED.match_date
      RETURNING id`,
     [
       m.apiFixtureId, m.homeTeam, m.awayTeam, m.homeGoals, m.awayGoals,
@@ -173,9 +194,8 @@ async function runSync({ trigger = 'manual' } = {}) {
     await withTransaction(async (client) => {
       for (const ev of events) {
         const m = normaliseEvent(ev);
-        if (!m || !m.completed) continue;
-        if (m.homeGoals == null || m.awayGoals == null) continue;
-        completed += 1;
+        if (!m) continue;
+        if (m.completed) completed += 1;
         if (await upsertMatch(client, m)) processed += 1;
       }
     });

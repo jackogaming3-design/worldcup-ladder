@@ -40,9 +40,11 @@ async function load() {
   renderCommish(body);
   renderStatus(body);
   renderEmpty(body);
+  renderUpcoming(body.upcomingHighlight);
   renderPlayerCards(body.playerLadder);
   renderTeamLadder(body.teamLadder);
   renderBreakdown(body.teamLadder, body.playerLadder);
+  renderWchb(body.whatCouldHaveBeen);
   renderRecent(body.recentMatches);
 }
 
@@ -223,6 +225,73 @@ function renderRecent(matches) {
         ${pen}
       </div>`;
   }).join('');
+}
+
+function daysUntil(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const ms = d.getTime() - Date.now();
+  if (ms < -3 * 3600 * 1000) return '';
+  const days = Math.round(ms / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return `in ${days} days`;
+}
+
+function renderUpcoming(g) {
+  const el = $('#upcoming');
+  if (!g) {
+    el.innerHTML =
+      '<div class="upcoming-card empty">⭐ <strong>Next clash between your teams:</strong> ' +
+      "none scheduled yet — we'll spotlight one the moment the bracket lines up.</div>";
+    return;
+  }
+  const when = formatAdelaide(g.date);
+  const countdown = daysUntil(g.date);
+  const owners = g.homeOwner && g.awayOwner
+    ? `<div class="upcoming-owners">${esc(g.homeOwner)} vs ${esc(g.awayOwner)}</div>`
+    : '';
+  const meta = [g.round, when, countdown].filter(Boolean).map(esc).join(' · ');
+  el.innerHTML = `
+    <div class="upcoming-card">
+      <div class="upcoming-label">⭐ Next clash between your teams</div>
+      <div class="upcoming-teams">
+        <span class="ut">${flag(g.homeTeam)} ${esc(g.homeTeam)}</span>
+        <span class="vs">vs</span>
+        <span class="ut">${esc(g.awayTeam)} ${flag(g.awayTeam)}</span>
+      </div>
+      ${owners}
+      <div class="upcoming-meta">${meta}</div>
+    </div>`;
+}
+
+function renderWchb(rows) {
+  const el = $('#wchb');
+  if (!rows || rows.length === 0) {
+    el.innerHTML =
+      '<div class="muted-note">Nothing yet — once the teams you passed on start racking up wins, ' +
+      "they'll show up here to haunt you.</div>";
+    return;
+  }
+  const head = `
+    <thead><tr>
+      <th class="c-rank">#</th>
+      <th class="c-team">Team</th>
+      <th>P</th><th>W</th><th>D</th><th>L</th>
+      <th class="c-opt">GF</th><th class="c-opt">GA</th>
+      <th>GD</th><th class="c-pts">Pts</th>
+    </tr></thead>`;
+  const body = rows.map((t) => `
+    <tr>
+      <td class="c-rank">${t.rank}</td>
+      <td class="c-team"><span class="tflag">${flag(t.team)}</span>${esc(t.team)}</td>
+      <td>${t.played}</td><td>${t.won}</td><td>${t.drawn}</td><td>${t.lost}</td>
+      <td class="c-opt">${t.gf}</td><td class="c-opt">${t.ga}</td>
+      <td>${signed(t.gd)}</td><td class="c-pts">${t.points}</td>
+    </tr>`).join('');
+  el.innerHTML =
+    `<div class="table-card"><div class="table-scroll"><table class="ladder-table">${head}<tbody>${body}</tbody></table></div></div>`;
 }
 
 init();

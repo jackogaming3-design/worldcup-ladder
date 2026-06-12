@@ -13,7 +13,7 @@ router.get('/ladder', async (req, res, next) => {
     const [ladder, sync, lu] = await Promise.all([
       computeLadder(),
       lastSync(),
-      query(`SELECT MAX(updated_at) AS m FROM matches`),
+      query(`SELECT MAX(updated_at) AS m FROM matches WHERE status IN ('FT','AET','PEN','AWD','WO')`),
     ]);
 
     const lastUpdated = (lu.rows[0] && lu.rows[0].m) || (sync && sync.finished_at) || null;
@@ -27,6 +27,8 @@ router.get('/ladder', async (req, res, next) => {
       playerLadder: ladder.playerLadder,
       teamLadder: ladder.teamLadder,
       recentMatches: ladder.recentMatches,
+      whatCouldHaveBeen: ladder.whatCouldHaveBeen,
+      upcomingHighlight: ladder.upcomingHighlight,
     });
   } catch (err) {
     next(err);
