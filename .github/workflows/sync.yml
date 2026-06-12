@@ -1,0 +1,27 @@
+name: Daily result sync
+
+on:
+  schedule:
+    - cron: "30 22 * * *" # 22:30 UTC = 08:00 Adelaide
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL and CRON_SECRET secrets must be set." >&2
+            exit 1
+          fi
+          echo "Syncing results at $APP_URL ..."
+          curl -fsS --retry 3 --retry-delay 10 -X POST \
+            "$APP_URL/api/admin/sync-results" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"
+          echo
+          echo "Sync request completed."
