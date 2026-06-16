@@ -41,6 +41,7 @@ async function load() {
   renderStatus(body);
   renderEmpty(body);
   renderUpcoming(body.upcomingHighlight);
+  renderNextUp(body.playerNextMatches);
   renderPlayerCards(body.playerLadder);
   renderTeamLadder(body.teamLadder);
   renderBreakdown(body.teamLadder, body.playerLadder);
@@ -292,6 +293,40 @@ function renderWchb(rows) {
     </tr>`).join('');
   el.innerHTML =
     `<div class="table-card"><div class="table-scroll"><table class="ladder-table">${head}<tbody>${body}</tbody></table></div></div>`;
+}
+
+function renderNextUp(rows) {
+  const el = $('#next-up');
+  if (!rows || rows.length === 0) {
+    el.innerHTML = '<div class="muted-note">No upcoming matches scheduled yet.</div>';
+    return;
+  }
+  el.innerHTML = rows.map((r) => {
+    const m = r.match;
+    const chip = `<span class="owner-chip" style="${ownerChipStyle(r.player)}">${esc(r.player)}</span>`;
+    if (!m) {
+      return `
+        <article class="nextup-card">
+          <div class="nu-player">${chip}</div>
+          <div class="nu-none">No upcoming match — done for now or awaiting the bracket.</div>
+        </article>`;
+    }
+    const when = formatAdelaide(m.date);
+    const countdown = daysUntil(m.date);
+    const rival = m.opponentOwner ? `<span class="nu-rival">🔥 vs ${esc(m.opponentOwner)}</span>` : '';
+    const live = m.status === 'LIVE' ? '<span class="nu-live">● LIVE</span>' : '';
+    const meta = [m.round, when, countdown].filter(Boolean).map(esc).join(' · ');
+    return `
+      <article class="nextup-card">
+        <div class="nu-player">${chip}${rival}${live}</div>
+        <div class="nu-match">
+          <span class="nu-team">${flag(m.team)} ${esc(m.team)}</span>
+          <span class="nu-vs">vs</span>
+          <span class="nu-opp">${flag(m.opponent)} ${esc(m.opponent)}</span>
+        </div>
+        <div class="nu-meta">${meta}</div>
+      </article>`;
+  }).join('');
 }
 
 init();

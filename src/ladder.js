@@ -171,7 +171,43 @@ async function computeLadder() {
       }
     : null;
 
-  return { teamLadder, playerLadder, recentMatches, whatCouldHaveBeen, upcomingHighlight };
+  // Each player's next upcoming match (soonest fixture involving either of
+  // their two teams) — so everyone can see who's got who, and when.
+  const nextByPlayer = new Map();
+  const cutoff = now - 3 * 3600 * 1000; // a few hours of slack for live games
+  for (const m of allMatches) {
+    if (isCompleted(m.status)) continue;
+    if (!m.match_date) continue;
+    const t = new Date(m.match_date).getTime();
+    if (!Number.isFinite(t) || t < cutoff) continue;
+    const homeOwner = ownerByKey.get(m.home_team.toLowerCase());
+    const awayOwner = ownerByKey.get(m.away_team.toLowerCase());
+    const consider = (player, team, opponent, opponentOwner) => {
+      const cur = nextByPlayer.get(player);
+      if (!cur || t < cur._t) {
+        nextByPlayer.set(player, {
+          team, opponent, opponentOwner: opponentOwner || null,
+          date: m.match_date, round: m.round, status: m.status, _t: t,
+        });
+      }
+    };
+    if (homeOwner) consider(homeOwner, m.home_team, m.away_team, awayOwner);
+    if (awayOwner) consider(awayOwner, m.away_team, m.home_team, homeOwner);
+  }
+  const playerNextMatches = playerLadder
+    .map((p) => {
+      const n = nextByPlayer.get(p.player);
+      if (!n) return { player: p.player, match: null, _t: Infinity };
+      const { _t, ...match } = n;
+      return { player: p.player, match, _t };
+    })
+    .sort((a, b) => a._t - b._t) // soonest match first
+    .map(({ _t, ...row }) => row);
+
+  return {
+    teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
+    upcomingHighlight, playerNextMatches,
+  };
 }
 
 module.exports = { computeLadder };

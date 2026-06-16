@@ -29,6 +29,7 @@ router.get('/ladder', async (req, res, next) => {
       recentMatches: ladder.recentMatches,
       whatCouldHaveBeen: ladder.whatCouldHaveBeen,
       upcomingHighlight: ladder.upcomingHighlight,
+      playerNextMatches: ladder.playerNextMatches,
     });
   } catch (err) {
     next(err);
