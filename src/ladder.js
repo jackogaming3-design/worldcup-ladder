@@ -96,12 +96,14 @@ async function computeLadder() {
   // Safe Pulse Golden Boot — top individual scorers among the drafted teams.
   // The 5/2/1 bonus is added to each scorer's owner on the player ladder below.
   const scRes = await query(
-    `SELECT athlete_id, MAX(athlete_name) AS name, MAX(team) AS team, SUM(goals)::int AS goals
-       FROM scorers
-      WHERE lower(team) = ANY($1::text[])
-      GROUP BY athlete_id
-      HAVING SUM(goals) > 0
-      ORDER BY SUM(goals) DESC, MAX(athlete_name) ASC
+    `SELECT s.athlete_id, MAX(s.athlete_name) AS name, MAX(s.team) AS team,
+            SUM(s.goals)::int AS goals, MAX(ap.photo_url) AS photo_url
+       FROM scorers s
+       LEFT JOIN athlete_photos ap ON ap.athlete_id = s.athlete_id
+      WHERE lower(s.team) = ANY($1::text[])
+      GROUP BY s.athlete_id
+      HAVING SUM(s.goals) > 0
+      ORDER BY SUM(s.goals) DESC, MAX(s.athlete_name) ASC
       LIMIT 3`,
     [[...ownedKeys]]
   );
@@ -113,6 +115,7 @@ async function computeLadder() {
     team: r.team,
     owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
     goals: r.goals,
+    photoUrl: r.photo_url || null,
     bonus: BOOT_BONUS[i] || 0,
   }));
   const bootBonusByOwner = new Map();

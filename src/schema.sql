@@ -63,3 +63,11 @@ CREATE TABLE IF NOT EXISTS scraped_fixtures (
   fixture_id TEXT PRIMARY KEY,
   scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Player photos for the Golden Boot podium, resolved from Wikipedia by name.
+CREATE TABLE IF NOT EXISTS athlete_photos (
+  athlete_id  TEXT PRIMARY KEY,
+  name        TEXT,
+  photo_url   TEXT,
+  resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

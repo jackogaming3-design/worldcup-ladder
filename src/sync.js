@@ -251,6 +251,52 @@ async function syncScorers() {
   return scraped;
 }
 
+// Resolve a player photo from Wikipedia's page image (keyed by name). ESPN has
+// headshots for almost no footballers, but Wikipedia has them for nearly every
+// notable player. Returns a thumbnail URL or null.
+async function resolvePhoto(name) {
+  if (!name) return null;
+  try {
+    const url =
+      `https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1` +
+      `&prop=pageimages&piprop=thumbnail&pithumbsize=320&titles=${encodeURIComponent(name)}`;
+    const resp = await fetch(url, { headers: { 'User-Agent': 'worldcup-ladder/1.0 (+ladder)' } });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const pages = (data.query && data.query.pages) || {};
+    for (const k of Object.keys(pages)) {
+      const t = pages[k].thumbnail;
+      if (t && t.source) return t.source;
+    }
+  } catch (_) {
+    /* fall through to null — frontend shows the country flag */
+  }
+  return null;
+}
+
+// Backfill photos for any scorer athlete we don't have one for yet. Runs every
+// sync; once resolved an athlete is skipped, so it stays cheap. Returns count.
+async function resolveMissingPhotos() {
+  const rows = (await query(
+    `SELECT s.athlete_id, MAX(s.athlete_name) AS name
+       FROM scorers s
+       LEFT JOIN athlete_photos ap ON ap.athlete_id = s.athlete_id
+      WHERE ap.athlete_id IS NULL OR ap.photo_url IS NULL
+      GROUP BY s.athlete_id`
+  )).rows;
+  let resolved = 0;
+  for (const r of rows) {
+    const photo = await resolvePhoto(r.name);
+    await query(
+      `INSERT INTO athlete_photos (athlete_id, name, photo_url) VALUES ($1,$2,$3)
+       ON CONFLICT (athlete_id) DO UPDATE SET name = EXCLUDED.name, photo_url = EXCLUDED.photo_url`,
+      [r.athlete_id, r.name, photo]
+    );
+    if (photo) resolved += 1;
+  }
+  return resolved;
+}
+
 // Runs a full sync and records a row in sync_logs. Used by both the HTTP
 // endpoint and the cron CLI. Never throws — returns a result object.
 async function runSync({ trigger = 'manual' } = {}) {
@@ -275,10 +321,12 @@ async function runSync({ trigger = 'manual' } = {}) {
     });
 
     const scorersScraped = await syncScorers();
+    const photosResolved = await resolveMissingPhotos();
 
     const message =
       `Scanned ${events.length} fixtures · ${completed} completed · ${processed} new/updated` +
-      `${scorersScraped ? ` · ${scorersScraped} scorer scrape(s)` : ''}.`;
+      `${scorersScraped ? ` · ${scorersScraped} scorer scrape(s)` : ''}` +
+      `${photosResolved ? ` · ${photosResolved} photo(s)` : ''}.`;
     await query(
       `UPDATE sync_logs
           SET status='success', message=$2, fixtures_processed=$3, finished_at=NOW()

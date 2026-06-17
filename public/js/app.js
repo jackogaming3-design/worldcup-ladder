@@ -331,10 +331,6 @@ function renderNextUp(rows) {
   }).join('');
 }
 
-function gbPhoto(id) {
-  return `https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/${id}.png&w=180&h=180`;
-}
-
 function gbCardHtml(s, place) {
   const medal = place === 'gold' ? '🥇' : place === 'silver' ? '🥈' : '🥉';
   const owner = s.owner
@@ -345,8 +341,8 @@ function gbCardHtml(s, place) {
       <div class="gb-card">
         <div class="gb-photo-wrap">
           <span class="gb-flag-fallback">${flag(s.team)}</span>
-          <img class="gb-photo" src="${gbPhoto(s.athleteId)}" alt="${esc(s.name)}" loading="lazy"
-               onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />
+          ${s.photoUrl ? `<img class="gb-photo" src="${esc(s.photoUrl)}" alt="${esc(s.name)}" loading="lazy"
+               onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />` : ''}
         </div>
         <div class="gb-name">${esc(s.name)}</div>
         <div class="gb-team">${flag(s.team)} ${esc(s.team)}</div>
