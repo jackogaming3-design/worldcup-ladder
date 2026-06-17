@@ -177,6 +177,80 @@ async function upsertMatch(client, m) {
   return res.rows.length > 0;
 }
 
+// --- Golden Boot: scrape goalscorers from match summaries ---
+
+async function fetchSummary(eventId) {
+  const url = `${config.espnBase}/summary?event=${encodeURIComponent(eventId)}`;
+  const resp = await fetch(url, { headers: { 'User-Agent': 'worldcup-ladder/1.0 (+ladder)' } });
+  if (!resp.ok) throw new Error(`summary ${eventId} HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// Goal scorers (excluding own goals; penalties count) for the given drafted
+// teams in an ESPN match summary. Scorer = first athlete on the goal event.
+function extractGoals(summary, draftedSet) {
+  const out = [];
+  for (const ke of summary.keyEvents || []) {
+    if ((ke.type || {}).type !== 'goal') continue;
+    if (/own goal/i.test(ke.text || '')) continue;
+    const team = ke.team && ke.team.displayName;
+    if (!team || !draftedSet.has(team.toLowerCase())) continue;
+    const a = (ke.participants || [])[0] && (ke.participants || [])[0].athlete;
+    if (!a || !a.id) continue;
+    out.push({ athleteId: String(a.id), athleteName: a.displayName || 'Unknown', team });
+  }
+  return out;
+}
+
+// Scrape scorers for completed drafted-team matches not yet scraped. Incremental
+// and bounded (only your teams' new games), so syncs stay fast. Returns count.
+async function syncScorers() {
+  const dt = await query(`SELECT lower(name) AS n FROM teams WHERE player_id IS NOT NULL`);
+  const drafted = dt.rows.map((r) => r.n);
+  if (!drafted.length) return 0;
+  const draftedSet = new Set(drafted);
+
+  const todo = await query(
+    `SELECT api_fixture_id FROM matches
+      WHERE status IN ('FT','AET','PEN','AWD','WO')
+        AND (lower(home_team) = ANY($1::text[]) OR lower(away_team) = ANY($1::text[]))
+        AND api_fixture_id NOT IN (SELECT fixture_id FROM scraped_fixtures)`,
+    [drafted]
+  );
+
+  let scraped = 0;
+  for (const { api_fixture_id: fid } of todo.rows) {
+    try {
+      const summary = await fetchSummary(fid);
+      const byAth = new Map();
+      for (const g of extractGoals(summary, draftedSet)) {
+        if (!byAth.has(g.athleteId)) byAth.set(g.athleteId, { ...g, goals: 0 });
+        byAth.get(g.athleteId).goals += 1;
+      }
+      await withTransaction(async (client) => {
+        await client.query(`DELETE FROM scorers WHERE fixture_id = $1`, [fid]);
+        for (const g of byAth.values()) {
+          await client.query(
+            `INSERT INTO scorers (fixture_id, athlete_id, athlete_name, team, goals)
+             VALUES ($1,$2,$3,$4,$5)`,
+            [fid, g.athleteId, g.athleteName, g.team, g.goals]
+          );
+        }
+        await client.query(
+          `INSERT INTO scraped_fixtures (fixture_id) VALUES ($1)
+           ON CONFLICT (fixture_id) DO UPDATE SET scraped_at = NOW()`,
+          [fid]
+        );
+      });
+      scraped += 1;
+    } catch (err) {
+      console.warn(`[sync] scorer scrape failed for ${fid}: ${err.message}`);
+      // leave unmarked so it retries next sync
+    }
+  }
+  return scraped;
+}
+
 // Runs a full sync and records a row in sync_logs. Used by both the HTTP
 // endpoint and the cron CLI. Never throws — returns a result object.
 async function runSync({ trigger = 'manual' } = {}) {
@@ -200,7 +274,11 @@ async function runSync({ trigger = 'manual' } = {}) {
       }
     });
 
-    const message = `Scanned ${events.length} fixtures · ${completed} completed · ${processed} new/updated.`;
+    const scorersScraped = await syncScorers();
+
+    const message =
+      `Scanned ${events.length} fixtures · ${completed} completed · ${processed} new/updated` +
+      `${scorersScraped ? ` · ${scorersScraped} scorer scrape(s)` : ''}.`;
     await query(
       `UPDATE sync_logs
           SET status='success', message=$2, fixtures_processed=$3, finished_at=NOW()

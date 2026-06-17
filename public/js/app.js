@@ -43,6 +43,7 @@ async function load() {
   renderUpcoming(body.upcomingHighlight);
   renderNextUp(body.playerNextMatches);
   renderPlayerCards(body.playerLadder);
+  renderGoldenBoot(body.goldenBoot);
   renderTeamLadder(body.teamLadder);
   renderBreakdown(body.teamLadder, body.playerLadder);
   renderWchb(body.whatCouldHaveBeen);
@@ -128,6 +129,7 @@ function renderPlayerCards(players) {
           <div class="pcard-name">${esc(p.player)}</div>
           <div class="pcard-teams">${teams}</div>
           <div class="pcard-stats">${statRow(p)}</div>
+          ${p.bootBonus ? `<div class="pcard-bonus">👟 +${p.bootBonus} Golden Boot bonus</div>` : ''}
         </div>
         <div class="pcard-points"><strong>${p.points}</strong><span>pts</span></div>
       </article>`;
@@ -327,6 +329,56 @@ function renderNextUp(rows) {
         <div class="nu-meta">${meta}</div>
       </article>`;
   }).join('');
+}
+
+function gbPhoto(id) {
+  return `https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/${id}.png&w=180&h=180`;
+}
+
+function gbCardHtml(s, place) {
+  const medal = place === 'gold' ? '🥇' : place === 'silver' ? '🥈' : '🥉';
+  const owner = s.owner
+    ? `<span class="owner-chip" style="${ownerChipStyle(s.owner)}">${esc(s.owner)}</span>`
+    : '';
+  return `
+    <div class="podium-col ${place}">
+      <div class="gb-card">
+        <div class="gb-photo-wrap">
+          <span class="gb-flag-fallback">${flag(s.team)}</span>
+          <img class="gb-photo" src="${gbPhoto(s.athleteId)}" alt="${esc(s.name)}" loading="lazy"
+               onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />
+        </div>
+        <div class="gb-name">${esc(s.name)}</div>
+        <div class="gb-team">${flag(s.team)} ${esc(s.team)}</div>
+        ${owner}
+        <div class="gb-goals"><strong>${s.goals}</strong><span>goal${s.goals === 1 ? '' : 's'}</span></div>
+      </div>
+      <div class="podium-block ${place}-block">
+        <span class="podium-medal">${medal}</span>
+        <span class="podium-bonus">+${s.bonus}</span>
+      </div>
+    </div>`;
+}
+
+function renderGoldenBoot(boot) {
+  const el = $('#golden-boot');
+  if (!boot || boot.length === 0) {
+    el.innerHTML =
+      '<div class="muted-note">No goals from your teams yet — the Golden Boot race kicks off with the first one.</div>';
+    return;
+  }
+  const byRank = {};
+  boot.forEach((s) => { byRank[s.rank] = s; });
+  // DOM order silver, gold, bronze so the gold winner sits tall in the middle.
+  const cols = [];
+  if (byRank[2]) cols.push(gbCardHtml(byRank[2], 'silver'));
+  if (byRank[1]) cols.push(gbCardHtml(byRank[1], 'gold'));
+  if (byRank[3]) cols.push(gbCardHtml(byRank[3], 'bronze'));
+  el.innerHTML =
+    `<div class="podium">${cols.join('')}</div>` +
+    `<div class="gb-bonus-note">🔥 Juicy bonus, added to the ladder: ` +
+    `Golden Boot <strong>+5</strong> · Silver <strong>+2</strong> · Bronze <strong>+1</strong> ` +
+    `to each scorer's owner.</div>`;
 }
 
 init();

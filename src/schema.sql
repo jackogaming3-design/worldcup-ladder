@@ -46,3 +46,20 @@ CREATE TABLE IF NOT EXISTS sync_logs (
   message            TEXT,
   fixtures_processed INTEGER NOT NULL DEFAULT 0
 );
+
+-- Golden Boot: goalscorers per fixture (scraped from match summaries), plus a
+-- marker of which fixtures we've already scraped so syncs stay incremental.
+CREATE TABLE IF NOT EXISTS scorers (
+  fixture_id   TEXT NOT NULL,
+  athlete_id   TEXT NOT NULL,
+  athlete_name TEXT NOT NULL,
+  team         TEXT NOT NULL,
+  goals        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (fixture_id, athlete_id)
+);
+CREATE INDEX IF NOT EXISTS idx_scorers_team ON scorers (lower(team));
+
+CREATE TABLE IF NOT EXISTS scraped_fixtures (
+  fixture_id TEXT PRIMARY KEY,
+  scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

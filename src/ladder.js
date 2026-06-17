@@ -93,6 +93,33 @@ async function computeLadder() {
     .sort(teamSort)
     .map((s, i) => ({ rank: i + 1, ...s }));
 
+  // Safe Pulse Golden Boot — top individual scorers among the drafted teams.
+  // The 5/2/1 bonus is added to each scorer's owner on the player ladder below.
+  const scRes = await query(
+    `SELECT athlete_id, MAX(athlete_name) AS name, MAX(team) AS team, SUM(goals)::int AS goals
+       FROM scorers
+      WHERE lower(team) = ANY($1::text[])
+      GROUP BY athlete_id
+      HAVING SUM(goals) > 0
+      ORDER BY SUM(goals) DESC, MAX(athlete_name) ASC
+      LIMIT 3`,
+    [[...ownedKeys]]
+  );
+  const BOOT_BONUS = [5, 2, 1];
+  const goldenBoot = scRes.rows.map((r, i) => ({
+    rank: i + 1,
+    athleteId: r.athlete_id,
+    name: r.name,
+    team: r.team,
+    owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
+    goals: r.goals,
+    bonus: BOOT_BONUS[i] || 0,
+  }));
+  const bootBonusByOwner = new Map();
+  for (const gb of goldenBoot) {
+    if (gb.owner) bootBonusByOwner.set(gb.owner, (bootBonusByOwner.get(gb.owner) || 0) + gb.bonus);
+  }
+
   // Player ladder = combined total of each player's teams.
   const byPlayer = new Map();
   for (const s of teamLadder) {
@@ -111,7 +138,17 @@ async function computeLadder() {
     p.gd = p.gf - p.ga;
   }
   const playerLadder = [...byPlayer.values()]
-    .map((p) => ({ ...p, teams: p.teams.slice().sort(), pct: pct(p.gf, p.ga) }))
+    .map((p) => {
+      const bootBonus = bootBonusByOwner.get(p.player) || 0;
+      return {
+        ...p,
+        teams: p.teams.slice().sort(),
+        pct: pct(p.gf, p.ga),
+        teamPoints: p.points, // points from teams only
+        bootBonus, // Golden Boot bonus added on top
+        points: p.points + bootBonus, // total used for ranking
+      };
+    })
     .sort(playerSort)
     .map((p, i) => ({ rank: i + 1, ...p }));
 
@@ -206,7 +243,7 @@ async function computeLadder() {
 
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
-    upcomingHighlight, playerNextMatches,
+    upcomingHighlight, playerNextMatches, goldenBoot,
   };
 }
 

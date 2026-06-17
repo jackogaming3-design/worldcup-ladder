@@ -267,6 +267,56 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
 .nu-meta { color: var(--muted); font-size: 0.82rem; margin-top: 6px; }
 .nu-none { color: var(--muted); font-size: 0.85rem; }
 
+/* ---------- Safe Pulse Golden Boot podium ---------- */
+.gb-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gb-header .section-title { margin: 0; }
+.gb-sponsor { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+.gb-logo { height: 34px; width: auto; display: block; }
+
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; padding-top: 6px; }
+.podium-col { display: flex; flex-direction: column; align-items: center; width: 33%; max-width: 210px; }
+.gb-card { text-align: center; width: 100%; }
+.gb-photo-wrap {
+  position: relative; width: 84px; height: 84px; margin: 0 auto 8px; border-radius: 50%;
+  overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1); border: 3px solid #cbd5e1;
+}
+.podium-col.gold .gb-photo-wrap { width: 110px; height: 110px; border-color: var(--gold); background: linear-gradient(135deg, #fde68a, #fbbf24); }
+.podium-col.silver .gb-photo-wrap { border-color: var(--silver); }
+.podium-col.bronze .gb-photo-wrap { border-color: var(--bronze); background: linear-gradient(135deg, #e7c9a9, #d9a066); }
+.gb-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.gb-flag-fallback { font-size: 2.2rem; }
+.gb-name { font-weight: 800; font-size: 0.92rem; line-height: 1.15; }
+.podium-col.gold .gb-name { font-size: 1.05rem; }
+.gb-team { font-size: 0.78rem; color: var(--muted); margin: 2px 0 4px; }
+.gb-card .owner-chip { font-size: 0.72rem; }
+.gb-goals { margin-top: 4px; }
+.gb-goals strong { font-size: 1.4rem; color: var(--brand-1); line-height: 1; }
+.podium-col.gold .gb-goals strong { font-size: 1.9rem; }
+.gb-goals span { display: block; font-size: 0.66rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.podium-block {
+  margin-top: 10px; width: 100%; border-radius: 12px 12px 0 0; color: #fff;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 8px; font-weight: 800;
+}
+.gold-block { height: 92px; background: linear-gradient(180deg, #fbbf24, #d97706); }
+.silver-block { height: 64px; background: linear-gradient(180deg, #cbd5e1, #94a3b8); }
+.bronze-block { height: 46px; background: linear-gradient(180deg, #d9a066, #b45309); }
+.podium-medal { font-size: 1.4rem; }
+.podium-bonus { font-size: 0.92rem; background: rgba(255,255,255,0.28); padding: 1px 9px; border-radius: 999px; }
+.gb-bonus-note { text-align: center; margin-top: 14px; font-size: 0.9rem; color: var(--ink); background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 10px 14px; }
+.pcard-bonus { color: #c2410c; font-size: 0.76rem; font-weight: 700; margin-top: 4px; }
+
+@media (max-width: 560px) {
+  .gb-photo-wrap { width: 62px; height: 62px; }
+  .podium-col.gold .gb-photo-wrap { width: 82px; height: 82px; }
+  .gb-name { font-size: 0.78rem; }
+  .podium-col.gold .gb-name { font-size: 0.88rem; }
+  .gb-goals strong { font-size: 1.1rem; }
+  .podium-col.gold .gb-goals strong { font-size: 1.45rem; }
+  .gb-flag-fallback { font-size: 1.5rem; }
+  .podium { gap: 6px; }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
   .hero-top { flex-direction: column; }
