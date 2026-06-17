@@ -331,7 +331,8 @@ function renderNextUp(rows) {
   }).join('');
 }
 
-function gbCardHtml(s, place) {
+function gbCardHtml(s) {
+  const place = s.tier || 'bronze';
   const medal = place === 'gold' ? '🥇' : place === 'silver' ? '🥈' : '🥉';
   const owner = s.owner
     ? `<span class="owner-chip" style="${ownerChipStyle(s.owner)}">${esc(s.owner)}</span>`
@@ -366,15 +367,17 @@ function renderGoldenBoot(boot) {
   const byRank = {};
   boot.forEach((s) => { byRank[s.rank] = s; });
   // DOM order silver, gold, bronze so the gold winner sits tall in the middle.
+  // Place rank-1 in the middle (tall), the next two on the flanks; each is
+  // styled by its own tier, so tied scorers show matching pedestals.
   const cols = [];
-  if (byRank[2]) cols.push(gbCardHtml(byRank[2], 'silver'));
-  if (byRank[1]) cols.push(gbCardHtml(byRank[1], 'gold'));
-  if (byRank[3]) cols.push(gbCardHtml(byRank[3], 'bronze'));
+  if (byRank[2]) cols.push(gbCardHtml(byRank[2]));
+  if (byRank[1]) cols.push(gbCardHtml(byRank[1]));
+  if (byRank[3]) cols.push(gbCardHtml(byRank[3]));
   el.innerHTML =
     `<div class="podium">${cols.join('')}</div>` +
     `<div class="gb-bonus-note">🔥 Juicy bonus, added to the ladder: ` +
     `Golden Boot <strong>+5</strong> · Silver <strong>+2</strong> · Bronze <strong>+1</strong> ` +
-    `to each scorer's owner.</div>`;
+    `to each scorer's owner. Tied scorers share the same bonus.</div>`;
 }
 
 init();

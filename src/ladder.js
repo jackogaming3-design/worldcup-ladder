@@ -107,17 +107,31 @@ async function computeLadder() {
       LIMIT 3`,
     [[...ownedKeys]]
   );
+  // Bonus by goal-count rank, NOT raw position: scorers tied on goals share the
+  // same rank and the same bonus (a "draw"). Messi 3 → +5; Haaland & Mbappé both
+  // on 2 → +2 each; a clear third on 1 → +1.
   const BOOT_BONUS = [5, 2, 1];
-  const goldenBoot = scRes.rows.map((r, i) => ({
-    rank: i + 1,
-    athleteId: r.athlete_id,
-    name: r.name,
-    team: r.team,
-    owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
-    goals: r.goals,
-    photoUrl: r.photo_url || null,
-    bonus: BOOT_BONUS[i] || 0,
-  }));
+  const TIERS = ['gold', 'silver', 'bronze'];
+  let denseRank = 0;
+  let prevGoals = null;
+  const goldenBoot = scRes.rows.map((r, i) => {
+    if (r.goals !== prevGoals) {
+      denseRank += 1;
+      prevGoals = r.goals;
+    }
+    return {
+      rank: i + 1, // display order (1 = most goals)
+      denseRank, // 1/2/3 by distinct goal count — tied scorers share it
+      tier: TIERS[denseRank - 1] || 'bronze',
+      athleteId: r.athlete_id,
+      name: r.name,
+      team: r.team,
+      owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
+      goals: r.goals,
+      photoUrl: r.photo_url || null,
+      bonus: BOOT_BONUS[denseRank - 1] || 0,
+    };
+  });
   const bootBonusByOwner = new Map();
   for (const gb of goldenBoot) {
     if (gb.owner) bootBonusByOwner.set(gb.owner, (bootBonusByOwner.get(gb.owner) || 0) + gb.bonus);
