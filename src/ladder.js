@@ -2,6 +2,7 @@
 
 const { query } = require('./db');
 const { config } = require('./config');
+const { predict } = require('./predict');
 const { POINTS, isCompleted, resultFor } = require('./scoring');
 
 // Stats are ALWAYS derived from the matches table — never stored — so the
@@ -297,6 +298,36 @@ async function computeLadder() {
   const auNext = auMatches
     .filter((m) => !isCompleted(m.status) && m.match_date && new Date(m.match_date).getTime() >= now - 3 * 3600 * 1000)
     .sort((a, b) => new Date(a.match_date) - new Date(b.match_date))[0];
+  // Crystal-ball odds: simulate the spotlight team's group from real
+  // results + remaining fixtures, then an Elo-based knockout run.
+  const spGroup = allMatches.filter(
+    (m) => /group/i.test(m.round || '') &&
+      (m.home_team.toLowerCase() === spotlightKey || m.away_team.toLowerCase() === spotlightKey)
+  );
+  const groupKeys = new Set();
+  for (const m of spGroup) {
+    groupKeys.add(m.home_team.toLowerCase());
+    groupKeys.add(m.away_team.toLowerCase());
+  }
+  const groupAll = allMatches.filter(
+    (m) => /group/i.test(m.round || '') &&
+      groupKeys.has(m.home_team.toLowerCase()) && groupKeys.has(m.away_team.toLowerCase())
+  );
+  const groupTeams = [...new Set(groupAll.flatMap((m) => [m.home_team, m.away_team]))];
+  const groupPlayed = groupAll
+    .filter((m) => isCompleted(m.status) && m.home_goals != null && m.away_goals != null)
+    .map((m) => ({ home: m.home_team, away: m.away_team, hg: m.home_goals, ag: m.away_goals }));
+  const groupRemaining = groupAll
+    .filter((m) => !isCompleted(m.status))
+    .map((m) => ({ home: m.home_team, away: m.away_team }));
+  let predictions = null;
+  try {
+    const target = groupTeams.find((t) => t.toLowerCase() === spotlightKey) || config.spotlightTeam;
+    predictions = predict({ teams: groupTeams, played: groupPlayed, remaining: groupRemaining, target });
+  } catch (_) {
+    predictions = null;
+  }
+
   const socceroos = {
     team: config.spotlightTeam,
     played: auRec.played, won: auRec.won, drawn: auRec.drawn, lost: auRec.lost,
@@ -309,6 +340,7 @@ async function computeLadder() {
           date: auNext.match_date, round: auNext.round,
         }
       : null,
+    predictions,
   };
 
   return {

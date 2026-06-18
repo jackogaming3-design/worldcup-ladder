@@ -413,6 +413,16 @@ function renderSocceroos(s) {
   const next = s.nextMatch
     ? `<div class="sp-next">🎬 Next up: vs ${flag(s.nextMatch.opponent)} ${esc(s.nextMatch.opponent)} · ${esc([s.nextMatch.round, formatAdelaide(s.nextMatch.date)].filter(Boolean).join(' · '))}</div>`
     : '';
+  const pr = s.predictions;
+  const fmtPct = (p) => (p == null ? '—' : p >= 0.1 ? `${Math.round(p * 100)}%` : `${(p * 100).toFixed(1)}%`);
+  const fmtWin = (p) => (p == null ? '—' : p < 0.001 ? '<0.1%' : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`);
+  const odds = pr
+    ? `<div class="sp-odds">
+         <div class="sp-odd"><div class="sp-odd-val">${fmtPct(pr.advance)}</div><div class="sp-odd-label">✅ Out of the group</div></div>
+         <div class="sp-odd"><div class="sp-odd-val">${fmtWin(pr.win)}</div><div class="sp-odd-label">🏆 Win the World Cup</div></div>
+       </div>
+       <div class="sp-odds-note">🔮 our crystal-ball model</div>`
+    : '';
   el.innerHTML = `
     <div class="spotlight-stage">
       <div class="spotlight-beam"></div>
@@ -429,6 +439,7 @@ function renderSocceroos(s) {
           <div class="sp-team">${esc(String(s.team).toUpperCase())}</div>
           <div class="sp-record">${esc(recordLine)}</div>
         </div>
+        ${odds}
         <div class="sp-cols">
           <div class="sp-col"><div class="sp-col-title">⚡ Recent form</div>${results}</div>
           <div class="sp-col"><div class="sp-col-title">🎯 Goal scorers</div><div class="sp-scorers">${scorers}</div></div>
