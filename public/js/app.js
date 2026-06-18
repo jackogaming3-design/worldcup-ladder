@@ -45,6 +45,7 @@ async function load() {
   renderPlayerCards(body.playerLadder);
   renderGoldenBoot(body.goldenBoot);
   renderTeamLadder(body.teamLadder);
+  renderSocceroos(body.socceroos);
   renderBreakdown(body.teamLadder, body.playerLadder);
   renderWchb(body.whatCouldHaveBeen);
   renderRecent(body.recentMatches);
@@ -378,6 +379,64 @@ function renderGoldenBoot(boot) {
     `<div class="gb-bonus-note">🔥 Juicy bonus, added to the ladder: ` +
     `Golden Boot <strong>+5</strong> · Silver <strong>+2</strong> · Bronze <strong>+1</strong> ` +
     `to each scorer's owner. Tied scorers share the same bonus.</div>`;
+}
+
+// NeueStudio's 4-pointed sparkle mark (their brand coral), slow-spinning.
+const NEUE_SPARKLE =
+  '<svg class="neue-sparkle" viewBox="0 0 32 32" aria-hidden="true">' +
+  '<path d="M32,16c-11.88,0-16-4.12-16-16,0,11.88-4.12,16-16,16,11.88,0,16,4.12,16,16,0-11.88,4.12-16,16-16Z"/></svg>';
+
+function renderSocceroos(s) {
+  const el = $('#socceroos');
+  if (!s) { el.innerHTML = ''; return; }
+  const recordLine = s.played
+    ? `Played ${s.played} · ${s.won}W ${s.drawn}D ${s.lost}L · ${s.points} pts · ${s.gf} for / ${s.ga} against`
+    : 'Yet to take the stage — first match coming up.';
+  const badge = (r) =>
+    r === 'W' ? '<span class="sp-res-w">WIN</span>'
+      : r === 'D' ? '<span class="sp-res-d">DRAW</span>'
+        : '<span class="sp-res-l">LOSS</span>';
+  const results = (s.recentResults || []).map((r) => `
+    <div class="sp-result">
+      <span class="sp-result-line">${flag(s.team)} ${esc(s.team)} <strong>${r.teamGoals}–${r.oppGoals}</strong> ${flag(r.opponent)} ${esc(r.opponent)}</span>
+      ${badge(r.result)}
+      <span class="sp-res-meta">${esc([r.round, shortDate(r.date)].filter(Boolean).join(' · '))}</span>
+    </div>`).join('') || '<div class="sp-none">No matches played yet.</div>';
+  const scorers = (s.scorers || []).map((sc) => `
+    <div class="sp-scorer">
+      <div class="sp-scorer-photo">${sc.photoUrl
+        ? `<img src="${esc(sc.photoUrl)}" alt="${esc(sc.name)}" loading="lazy" onerror="this.replaceWith(document.createTextNode('⚽'))" />`
+        : '⚽'}</div>
+      <div class="sp-scorer-name">${esc(sc.name)}</div>
+      <div class="sp-scorer-goals">${sc.goals}</div>
+    </div>`).join('') || '<div class="sp-none">No goals yet — but the stage is set.</div>';
+  const next = s.nextMatch
+    ? `<div class="sp-next">🎬 Next up: vs ${flag(s.nextMatch.opponent)} ${esc(s.nextMatch.opponent)} · ${esc([s.nextMatch.round, formatAdelaide(s.nextMatch.date)].filter(Boolean).join(' · '))}</div>`
+    : '';
+  el.innerHTML = `
+    <div class="spotlight-stage">
+      <div class="spotlight-beam"></div>
+      <div class="spotlight-floor"></div>
+      <div class="spotlight-content">
+        <div class="sp-header">
+          <h2 class="sp-title">🎭 Socceroos Spotlight</h2>
+          <a class="sp-sponsor" href="https://neuestudio.com.au/" target="_blank" rel="noopener" title="NeueStudio — Design Studio, Adelaide">
+            <span class="sp-sponsor-label">spotlight by</span>${NEUE_SPARKLE}<span class="sp-sponsor-name">NeueStudio</span>
+          </a>
+        </div>
+        <div class="sp-stage-mid">
+          <div class="sp-flag">${flag(s.team)}</div>
+          <div class="sp-team">${esc(String(s.team).toUpperCase())}</div>
+          <div class="sp-record">${esc(recordLine)}</div>
+        </div>
+        <div class="sp-cols">
+          <div class="sp-col"><div class="sp-col-title">⚡ Recent form</div>${results}</div>
+          <div class="sp-col"><div class="sp-col-title">🎯 Goal scorers</div><div class="sp-scorers">${scorers}</div></div>
+        </div>
+        ${next}
+        <div class="sp-tagline">All eyes on the green &amp; gold 💚💛</div>
+      </div>
+    </div>`;
 }
 
 init();

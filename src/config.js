@@ -17,6 +17,8 @@ const config = {
   espnBase: (process.env.ESPN_BASE_URL || 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world')
     .replace(/\/+$/, ''),
   season: process.env.WORLD_CUP_SEASON || '2026',
+  // Team featured in the "Socceroos Spotlight" (sponsored by NeueStudio).
+  spotlightTeam: process.env.SPOTLIGHT_TEAM || 'Australia',
   // Optional YYYYMMDD overrides for the date window scanned each sync.
   // Defaults to 1 Jun – 1 Aug of the season year, which brackets the tournament.
   windowStart: process.env.WC_WINDOW_START || '',

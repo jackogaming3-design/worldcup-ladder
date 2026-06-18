@@ -208,14 +208,16 @@ async function syncScorers() {
   const dt = await query(`SELECT lower(name) AS n FROM teams WHERE player_id IS NOT NULL`);
   const drafted = dt.rows.map((r) => r.n);
   if (!drafted.length) return 0;
-  const draftedSet = new Set(drafted);
+  // Also scrape the spotlight team (Socceroos) so we can show their scorers.
+  const interest = [...new Set([...drafted, config.spotlightTeam.toLowerCase()])];
+  const interestSet = new Set(interest);
 
   const todo = await query(
     `SELECT api_fixture_id FROM matches
       WHERE status IN ('FT','AET','PEN','AWD','WO')
         AND (lower(home_team) = ANY($1::text[]) OR lower(away_team) = ANY($1::text[]))
         AND api_fixture_id NOT IN (SELECT fixture_id FROM scraped_fixtures)`,
-    [drafted]
+    [interest]
   );
 
   let scraped = 0;
@@ -223,7 +225,7 @@ async function syncScorers() {
     try {
       const summary = await fetchSummary(fid);
       const byAth = new Map();
-      for (const g of extractGoals(summary, draftedSet)) {
+      for (const g of extractGoals(summary, interestSet)) {
         if (!byAth.has(g.athleteId)) byAth.set(g.athleteId, { ...g, goals: 0 });
         byAth.get(g.athleteId).goals += 1;
       }

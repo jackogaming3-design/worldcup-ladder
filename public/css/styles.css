@@ -317,8 +317,60 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
   .podium { gap: 6px; }
 }
 
+/* ---------- Socceroos Spotlight (NeueStudio) ---------- */
+.spotlight-stage {
+  position: relative; overflow: hidden; isolation: isolate;
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 22px 20px 24px; color: #e8edf7;
+  background: radial-gradient(120% 95% at 50% -12%, #2a3550 0%, #141c31 46%, #0a0f1e 100%);
+}
+.spotlight-beam {
+  position: absolute; top: -8%; left: 50%; transform: translateX(-50%);
+  width: 72%; height: 132%; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,246,200,0.55), rgba(255,240,170,0.10) 55%, rgba(255,240,170,0) 80%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(10px);
+}
+.spotlight-floor {
+  position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%);
+  width: 52%; height: 38px; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255,244,190,0.32), transparent 70%);
+  filter: blur(6px);
+}
+.spotlight-content { position: relative; z-index: 1; }
+.sp-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sp-title { margin: 0; font-size: 1.18rem; }
+.sp-sponsor { display: flex; align-items: center; gap: 7px; text-decoration: none; color: #cbd5e1; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+.sp-sponsor-name { color: #fff; }
+.neue-sparkle { width: 18px; height: 18px; fill: #F24E3D; animation: neue-spin 7s linear infinite; }
+@keyframes neue-spin { to { transform: rotate(360deg); } }
+.sp-stage-mid { text-align: center; padding: 10px 0 4px; }
+.sp-flag { font-size: 2.6rem; line-height: 1; filter: drop-shadow(0 0 14px rgba(255,240,170,0.55)); }
+.sp-team { font-weight: 900; letter-spacing: 0.14em; font-size: 1.5rem; margin-top: 4px; text-shadow: 0 0 18px rgba(255,240,170,0.4); }
+.sp-record { color: #aebbd4; font-size: 0.85rem; margin-top: 4px; }
+.sp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+.sp-col-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: #93a4c6; margin-bottom: 8px; font-weight: 800; }
+.sp-result { font-size: 0.9rem; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sp-result:last-child { border-bottom: 0; }
+.sp-result-line { font-weight: 600; }
+.sp-res-w { background: #16a34a; color: #fff; font-size: 0.64rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+.sp-res-d { background: #64748b; color: #fff; font-size: 0.64rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+.sp-res-l { background: #dc2626; color: #fff; font-size: 0.64rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+.sp-res-meta { color: #8fa0c0; font-size: 0.72rem; width: 100%; }
+.sp-scorers { display: flex; flex-direction: column; gap: 9px; }
+.sp-scorer { display: flex; align-items: center; gap: 10px; }
+.sp-scorer-photo { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; background: linear-gradient(135deg, #334155, #1e293b); border: 2px solid rgba(255,240,170,0.45); }
+.sp-scorer-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.sp-scorer-name { font-weight: 700; font-size: 0.9rem; flex: 1; }
+.sp-scorer-goals { font-weight: 900; color: #fde68a; font-size: 1.05rem; }
+.sp-next { margin-top: 16px; text-align: center; font-size: 0.9rem; color: #e8edf7; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 12px; }
+.sp-tagline { margin-top: 12px; text-align: center; font-weight: 800; color: #fde68a; }
+.sp-none { color: #8fa0c0; font-size: 0.85rem; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
+  .sp-cols { grid-template-columns: 1fr; gap: 14px; }
+  .sp-team { font-size: 1.25rem; }
   .hero-top { flex-direction: column; }
   .hero-actions { align-items: flex-start; }
   .commish-area { justify-content: flex-start; }

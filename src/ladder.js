@@ -1,6 +1,7 @@
 'use strict';
 
 const { query } = require('./db');
+const { config } = require('./config');
 const { POINTS, isCompleted, resultFor } = require('./scoring');
 
 // Stats are ALWAYS derived from the matches table — never stored — so the
@@ -258,9 +259,61 @@ async function computeLadder() {
     .sort((a, b) => a._t - b._t) // soonest match first
     .map(({ _t, ...row }) => row);
 
+  // --- Socceroos Spotlight (sponsored by NeueStudio) ---
+  const spotlightKey = config.spotlightTeam.toLowerCase();
+  const auMatches = allMatches.filter(
+    (m) => m.home_team.toLowerCase() === spotlightKey || m.away_team.toLowerCase() === spotlightKey
+  );
+  const auRec = emptyStats();
+  const auRecent = [];
+  for (const m of auMatches) {
+    if (!isCompleted(m.status) || m.home_goals == null || m.away_goals == null) continue;
+    const isHome = m.home_team.toLowerCase() === spotlightKey;
+    const tg = isHome ? m.home_goals : m.away_goals;
+    const og = isHome ? m.away_goals : m.home_goals;
+    const res = resultFor({
+      homeTeam: m.home_team, awayTeam: m.away_team,
+      homeGoals: m.home_goals, awayGoals: m.away_goals, winnerTeam: m.winner_team,
+    });
+    const r = isHome ? res.home : res.away;
+    applyResult(auRec, r, tg, og);
+    auRecent.push({
+      date: m.match_date, round: m.round,
+      opponent: isHome ? m.away_team : m.home_team,
+      teamGoals: tg, oppGoals: og, result: r, status: m.status,
+    });
+  }
+  const auScorersRes = await query(
+    `SELECT s.athlete_id, MAX(s.athlete_name) AS name, SUM(s.goals)::int AS goals,
+            MAX(ap.photo_url) AS photo_url
+       FROM scorers s
+       LEFT JOIN athlete_photos ap ON ap.athlete_id = s.athlete_id
+      WHERE lower(s.team) = $1
+      GROUP BY s.athlete_id
+      ORDER BY SUM(s.goals) DESC, MAX(s.athlete_name) ASC
+      LIMIT 6`,
+    [spotlightKey]
+  );
+  const auNext = auMatches
+    .filter((m) => !isCompleted(m.status) && m.match_date && new Date(m.match_date).getTime() >= now - 3 * 3600 * 1000)
+    .sort((a, b) => new Date(a.match_date) - new Date(b.match_date))[0];
+  const socceroos = {
+    team: config.spotlightTeam,
+    played: auRec.played, won: auRec.won, drawn: auRec.drawn, lost: auRec.lost,
+    gf: auRec.gf, ga: auRec.ga, gd: auRec.gd, points: auRec.points,
+    recentResults: auRecent.slice(0, 4),
+    scorers: auScorersRes.rows.map((r) => ({ name: r.name, goals: r.goals, photoUrl: r.photo_url || null })),
+    nextMatch: auNext
+      ? {
+          opponent: auNext.home_team.toLowerCase() === spotlightKey ? auNext.away_team : auNext.home_team,
+          date: auNext.match_date, round: auNext.round,
+        }
+      : null,
+  };
+
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
-    upcomingHighlight, playerNextMatches, goldenBoot,
+    upcomingHighlight, playerNextMatches, goldenBoot, socceroos,
   };
 }
 
