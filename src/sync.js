@@ -255,25 +255,39 @@ async function syncScorers() {
 
 // Resolve a player photo from Wikipedia's page image (keyed by name). ESPN has
 // headshots for almost no footballers, but Wikipedia has them for nearly every
-// notable player. Returns a thumbnail URL or null.
+// notable player. Tries the exact title, then a "<name> footballer" search,
+// then one retry — with a Wikipedia-compliant User-Agent. Returns a URL or null.
 async function resolvePhoto(name) {
   if (!name) return null;
-  try {
-    const url =
-      `https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1` +
-      `&prop=pageimages&piprop=thumbnail&pithumbsize=320&titles=${encodeURIComponent(name)}`;
-    const resp = await fetch(url, { headers: { 'User-Agent': 'worldcup-ladder/1.0 (+ladder)' } });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const pages = (data.query && data.query.pages) || {};
-    for (const k of Object.keys(pages)) {
-      const t = pages[k].thumbnail;
-      if (t && t.source) return t.source;
+  const headers = {
+    'User-Agent': 'WorldCupLadder/1.0 (https://worldcup-ladder.onrender.com; World Cup ladder app)',
+  };
+  const enc = encodeURIComponent(name);
+  const direct =
+    `https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1` +
+    `&prop=pageimages&piprop=thumbnail&pithumbsize=320&titles=${enc}`;
+  const search =
+    `https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1` +
+    `&generator=search&gsrsearch=${enc}%20footballer&gsrlimit=1` +
+    `&prop=pageimages&piprop=thumbnail&pithumbsize=320`;
+
+  const attempt = async (url) => {
+    try {
+      const resp = await fetch(url, { headers });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const pages = (data.query && data.query.pages) || {};
+      for (const k of Object.keys(pages)) {
+        const t = pages[k].thumbnail;
+        if (t && t.source) return t.source;
+      }
+    } catch (_) {
+      /* ignore and try the next strategy */
     }
-  } catch (_) {
-    /* fall through to null — frontend shows the country flag */
-  }
-  return null;
+    return null;
+  };
+
+  return (await attempt(direct)) || (await attempt(search)) || (await attempt(direct));
 }
 
 // Backfill photos for any scorer athlete we don't have one for yet. Runs every
