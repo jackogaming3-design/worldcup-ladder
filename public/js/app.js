@@ -43,6 +43,7 @@ async function load() {
   renderUpcoming(body.upcomingHighlight);
   renderNextUp(body.playerNextMatches);
   renderPlayerCards(body.playerLadder);
+  renderBoxSeat(body.boxSeat);
   renderGoldenBoot(body.goldenBoot);
   renderTeamLadder(body.teamLadder);
   renderSocceroos(body.socceroos);
@@ -356,6 +357,39 @@ function gbCardHtml(s) {
         <span class="podium-bonus">+${s.bonus}</span>
       </div>
     </div>`;
+}
+
+function renderBoxSeat(b) {
+  const el = $('#box-seat');
+  if (!b || !b.players || !b.players.length) { el.innerHTML = ''; return; }
+  const maxWin = Math.max(0.01, ...b.players.map((p) => p.winPct));
+  const fmtWin = (p) => (p >= 0.1 ? `${Math.round(p * 100)}%` : p < 0.001 ? '<0.1%' : `${(p * 100).toFixed(1)}%`);
+  const rows = b.players.map((p, i) => `
+    <div class="bs-row">
+      <div class="bs-player"><span class="owner-chip" style="${ownerChipStyle(p.player)}">${esc(p.player)}</span>${i === 0 ? ' <span class="bs-crown">👑</span>' : ''}</div>
+      <div class="bs-bar"><div class="bs-bar-fill" style="width:${Math.max(3, (p.winPct / maxWin) * 100)}%"></div></div>
+      <div class="bs-nums"><span class="bs-win">${fmtWin(p.winPct)}</span><span class="bs-proj">${p.projectedPoints.toFixed(1)} proj pts</span></div>
+    </div>`).join('');
+  const favs = (b.wcFavourites || []).map((f) => `
+    <div class="bs-fav">
+      <span class="bs-fav-team">${flag(f.team)} ${esc(f.team)}</span>
+      <span class="bs-fav-pct">${(f.pct * 100).toFixed(1)}%</span>
+      ${f.owner
+        ? `<span class="owner-chip bs-fav-owner" style="${ownerChipStyle(f.owner)}">${esc(f.owner)}</span>`
+        : '<span class="bs-fav-owner none">undrafted</span>'}
+    </div>`).join('');
+  el.innerHTML = `
+    <div class="bs-grid">
+      <div class="bs-card">
+        <div class="bs-card-title">🏆 Who wins the ladder?</div>
+        ${rows}
+      </div>
+      <div class="bs-card">
+        <div class="bs-card-title">🌍 Projected World Cup winner</div>
+        ${favs}
+      </div>
+    </div>
+    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results + current Golden Boot bonus) thousands of times.</div>`;
 }
 
 function renderGoldenBoot(boot) {

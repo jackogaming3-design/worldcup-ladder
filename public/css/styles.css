@@ -372,6 +372,27 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
 .sp-odd-label { font-size: 0.74rem; color: #cbd5e1; margin-top: 5px; font-weight: 700; }
 .sp-odds-note { text-align: center; font-size: 0.7rem; color: #8fa0c0; margin-top: 7px; text-transform: uppercase; letter-spacing: 0.06em; }
 
+/* ---------- Box Seat (title race) ---------- */
+.bs-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+.bs-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+.bs-card-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 12px; }
+.bs-row { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; padding: 7px 0; }
+.bs-player { font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+.bs-crown { font-size: 0.9rem; }
+.bs-bar { position: relative; height: 18px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
+.bs-bar-fill { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, var(--brand-1), var(--brand-2)); border-radius: 999px; }
+.bs-nums { text-align: right; white-space: nowrap; }
+.bs-win { font-weight: 800; color: var(--brand-1); font-size: 1rem; }
+.bs-proj { display: block; font-size: 0.64rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+.bs-fav { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+.bs-fav:last-child { border-bottom: 0; }
+.bs-fav-team { font-weight: 700; flex: 1; white-space: nowrap; }
+.bs-fav-pct { font-weight: 800; color: var(--brand-1); }
+.bs-fav-owner { font-size: 0.7rem; }
+.bs-fav-owner.none { color: var(--muted); font-weight: 600; }
+.bs-note { text-align: center; color: var(--muted); font-size: 0.76rem; margin-top: 12px; }
+@media (max-width: 640px) { .bs-grid { grid-template-columns: 1fr; } }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 560px) {
   .sp-cols { grid-template-columns: 1fr; gap: 14px; }

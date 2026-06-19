@@ -2,7 +2,7 @@
 
 const { query } = require('./db');
 const { config } = require('./config');
-const { predict } = require('./predict');
+const { predict, titleRace } = require('./predict');
 const { POINTS, isCompleted, resultFor } = require('./scoring');
 
 // Stats are ALWAYS derived from the matches table — never stored — so the
@@ -343,9 +343,57 @@ async function computeLadder() {
     predictions,
   };
 
+  // --- Box Seat: live title-race simulation across all drafted teams ---
+  const groupByTeam = new Map();
+  for (const m of allMatches) {
+    if (!/group/i.test(m.round || '')) continue;
+    const hk = m.home_team.toLowerCase();
+    const ak = m.away_team.toLowerCase();
+    if (ownedKeys.has(hk)) {
+      if (!groupByTeam.has(hk)) groupByTeam.set(hk, new Set([hk]));
+      groupByTeam.get(hk).add(ak);
+    }
+    if (ownedKeys.has(ak)) {
+      if (!groupByTeam.has(ak)) groupByTeam.set(ak, new Set([ak]));
+      groupByTeam.get(ak).add(hk);
+    }
+  }
+  const seenGroup = new Set();
+  const simGroups = [];
+  for (const set of groupByTeam.values()) {
+    const teamsKeys = [...set].sort();
+    const gid = teamsKeys.join('|');
+    if (seenGroup.has(gid)) continue;
+    seenGroup.add(gid);
+    const tset = new Set(teamsKeys);
+    const gms = allMatches.filter(
+      (m) => /group/i.test(m.round || '') &&
+        tset.has(m.home_team.toLowerCase()) && tset.has(m.away_team.toLowerCase())
+    );
+    simGroups.push({
+      teams: teamsKeys,
+      played: gms
+        .filter((m) => isCompleted(m.status) && m.home_goals != null && m.away_goals != null)
+        .map((m) => ({ h: m.home_team.toLowerCase(), a: m.away_team.toLowerCase(), hg: m.home_goals, ag: m.away_goals })),
+      remaining: gms
+        .filter((m) => !isCompleted(m.status))
+        .map((m) => ({ h: m.home_team.toLowerCase(), a: m.away_team.toLowerCase() })),
+    });
+  }
+  const ownersObj = {};
+  for (const [k, v] of ownerByKey) ownersObj[k] = v;
+  const bonusObj = {};
+  for (const [k, v] of bootBonusByOwner) bonusObj[k] = v;
+  let boxSeat = null;
+  try {
+    boxSeat = titleRace({ drafted: ownedKeys, owners: ownersObj, groups: simGroups, bonus: bonusObj });
+  } catch (_) {
+    boxSeat = null;
+  }
+
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
-    upcomingHighlight, playerNextMatches, goldenBoot, socceroos,
+    upcomingHighlight, playerNextMatches, goldenBoot, socceroos, boxSeat,
   };
 }
 
