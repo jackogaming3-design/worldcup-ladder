@@ -48,6 +48,7 @@ router.get('/ladder', async (req, res, next) => {
       upcomingHighlight: ladder.upcomingHighlight,
       playerNextMatches: ladder.playerNextMatches,
       goldenBoot: ladder.goldenBoot,
+      playmaker: ladder.playmaker,
       socceroos: ladder.socceroos,
       boxSeat: ladder.boxSeat,
     });
