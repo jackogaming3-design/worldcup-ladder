@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { config } = require('./config');
 
 const COOKIE = 'wcl_admin';
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
 
 // Stateless signed-cookie session: "<issuedAtMs>.<hmac>". No session store
 // needed, so it survives Render restarts.

@@ -3,9 +3,24 @@
 const express = require('express');
 const { query } = require('../db');
 const { computeLadder } = require('../ladder');
-const { lastSync } = require('../sync');
+const { lastSync, runSync } = require('../sync');
 
 const router = express.Router();
+
+// Self-healing auto-sync: when the ladder is viewed and the last sync is stale,
+// kick one off in the background (no external cron or secret needed). Debounced
+// so concurrent visitors don't pile up. Returns true if one was started.
+let autoSyncing = false;
+function maybeAutoSync(sync) {
+  if (autoSyncing) return false;
+  const finishedAt = sync && sync.finished_at ? new Date(sync.finished_at).getTime() : 0;
+  if (finishedAt && Date.now() - finishedAt < 20 * 60 * 1000) return false; // fresh enough
+  autoSyncing = true;
+  runSync({ trigger: 'auto-visit' })
+    .catch(() => {})
+    .finally(() => { autoSyncing = false; });
+  return true;
+}
 
 // GET /api/ladder — everything the home page needs in one call.
 router.get('/ladder', async (req, res, next) => {
@@ -17,10 +32,12 @@ router.get('/ladder', async (req, res, next) => {
     ]);
 
     const lastUpdated = (lu.rows[0] && lu.rows[0].m) || (sync && sync.finished_at) || null;
+    const syncing = maybeAutoSync(sync);
 
     res.json({
       lastUpdated,
       lastSync: sync,
+      syncing,
       scoring: { win: 3, draw: 1, loss: 0, penaltyRule: 'shootout-winner-wins' },
       source: 'ESPN (free public feed)',
       apiConfigured: true,

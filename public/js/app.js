@@ -50,6 +50,8 @@ async function load() {
   renderBreakdown(body.teamLadder, body.playerLadder);
   renderWchb(body.whatCouldHaveBeen);
   renderRecent(body.recentMatches);
+  // A background sync was kicked off (stale data) — refresh once it should be done.
+  if (body.syncing) setTimeout(load, 25000);
 }
 
 function renderCommish(data) {
@@ -97,6 +99,9 @@ function renderStatus(data) {
   }
   if (!data.apiConfigured) {
     bits.push(`<span class="status-chip warn">Result sync not configured yet</span>`);
+  }
+  if (data.syncing) {
+    bits.push(`<span class="status-chip">⟳ Updating results…</span>`);
   }
   bar.innerHTML = bits.join('');
 }

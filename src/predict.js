@@ -78,7 +78,7 @@ function knockoutRoundProb(eTeam, eOpp) {
 let cache = { key: '', value: null };
 
 // Returns { advance, win } as probabilities in [0, 1], or null.
-function predict({ teams, played, remaining, target }, runs = 10000) {
+function predict({ teams, played, remaining, target }, runs = 5000) {
   if (!teams || teams.length < 3 || !target) return null;
   const key = JSON.stringify({ played, remaining, target });
   if (cache.key === key && cache.value) return cache.value;
@@ -106,7 +106,7 @@ let raceCache = { key: '', value: null };
 // play out every group (real results + simulated remaining), give each drafted
 // team a knockout run (Elo, round by round), tally each player's points from
 // their two teams + the (current) Golden Boot bonus, and record the winner.
-function titleRace({ drafted, owners, groups, bonus, runs = 10000 }) {
+function titleRace({ drafted, owners, groups, bonus, runs = 5000 }) {
   if (!groups || !groups.length) return null;
   const key = JSON.stringify({ groups, bonus, owners });
   if (raceCache.key === key && raceCache.value) return raceCache.value;
