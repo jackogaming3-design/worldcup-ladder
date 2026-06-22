@@ -45,6 +45,7 @@ async function load() {
   renderPlayerCards(body.playerLadder);
   renderBoxSeat(body.boxSeat);
   renderGoldenBoot(body.goldenBoot);
+  renderPlaymaker(body.playmaker);
   renderTeamLadder(body.teamLadder);
   renderSocceroos(body.socceroos);
   renderBreakdown(body.teamLadder, body.playerLadder);
@@ -136,7 +137,7 @@ function renderPlayerCards(players) {
           <div class="pcard-name">${esc(p.player)}</div>
           <div class="pcard-teams">${teams}</div>
           <div class="pcard-stats">${statRow(p)}</div>
-          ${p.bootBonus ? `<div class="pcard-bonus">👟 +${p.bootBonus} Golden Boot bonus</div>` : ''}
+          ${p.awardBonus ? `<div class="pcard-bonus">🏅 +${p.awardBonus} award bonus</div>` : ''}
         </div>
         <div class="pcard-points"><strong>${p.points}</strong><span>pts</span></div>
       </article>`;
@@ -338,30 +339,52 @@ function renderNextUp(rows) {
   }).join('');
 }
 
-function gbCardHtml(s) {
-  const place = s.tier || 'bronze';
+// One podium column for a tier (gold/silver/bronze). The leading player gets the
+// photo; any others tied on the same count are listed beneath — they all share
+// the tier's bonus. statLabel(count) returns "goal(s)" or "assist(s)".
+function awardColHtml(tier, statLabel) {
+  const place = tier.medal;
   const medal = place === 'gold' ? '🥇' : place === 'silver' ? '🥈' : '🥉';
-  const owner = s.owner
-    ? `<span class="owner-chip" style="${ownerChipStyle(s.owner)}">${esc(s.owner)}</span>`
+  const players = tier.players || [];
+  const lead = players[0];
+  if (!lead) return '';
+  const ownerChip = (o) => (o ? `<span class="owner-chip" style="${ownerChipStyle(o)}">${esc(o)}</span>` : '');
+  const others = players.slice(1);
+  const othersHtml = others.length
+    ? `<div class="gb-tied">${others
+        .map((p) => `<span class="gb-tied-name">${flag(p.team)} ${esc(p.name)} ${ownerChip(p.owner)}</span>`)
+        .join('')}</div>`
     : '';
   return `
     <div class="podium-col ${place}">
       <div class="gb-card">
         <div class="gb-photo-wrap">
-          <span class="gb-flag-fallback">${flag(s.team)}</span>
-          ${s.photoUrl ? `<img class="gb-photo" src="${esc(s.photoUrl)}" alt="${esc(s.name)}" loading="lazy"
+          <span class="gb-flag-fallback">${flag(lead.team)}</span>
+          ${lead.photoUrl ? `<img class="gb-photo" src="${esc(lead.photoUrl)}" alt="${esc(lead.name)}" loading="lazy"
                onload="this.previousElementSibling.style.display='none'" onerror="this.remove()" />` : ''}
         </div>
-        <div class="gb-name">${esc(s.name)}</div>
-        <div class="gb-team">${flag(s.team)} ${esc(s.team)}</div>
-        ${owner}
-        <div class="gb-goals"><strong>${s.goals}</strong><span>goal${s.goals === 1 ? '' : 's'}</span></div>
+        <div class="gb-name">${esc(lead.name)}</div>
+        <div class="gb-team">${flag(lead.team)} ${esc(lead.team)}</div>
+        ${ownerChip(lead.owner)}
+        ${othersHtml}
+        <div class="gb-goals"><strong>${tier.count}</strong><span>${statLabel(tier.count)}</span></div>
       </div>
       <div class="podium-block ${place}-block">
         <span class="podium-medal">${medal}</span>
-        <span class="podium-bonus">+${s.bonus}</span>
+        <span class="podium-bonus">+${tier.bonus}</span>
       </div>
     </div>`;
+}
+
+// DOM order silver, gold, bronze so the winner sits tall in the middle.
+function awardPodiumHtml(tiers, statLabel) {
+  const byPlace = {};
+  (tiers || []).forEach((t) => { byPlace[t.place] = t; });
+  const cols = [];
+  if (byPlace[2]) cols.push(awardColHtml(byPlace[2], statLabel));
+  if (byPlace[1]) cols.push(awardColHtml(byPlace[1], statLabel));
+  if (byPlace[3]) cols.push(awardColHtml(byPlace[3], statLabel));
+  return `<div class="podium">${cols.join('')}</div>`;
 }
 
 function renderBoxSeat(b) {
@@ -394,30 +417,37 @@ function renderBoxSeat(b) {
         ${favs}
       </div>
     </div>
-    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results + current Golden Boot bonus) thousands of times.</div>`;
+    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results + current award bonuses) thousands of times.</div>`;
 }
 
 function renderGoldenBoot(boot) {
   const el = $('#golden-boot');
-  if (!boot || boot.length === 0) {
+  const tiers = (boot && boot.tiers) || [];
+  if (!tiers.length) {
     el.innerHTML =
       '<div class="muted-note">No goals from your teams yet — the Golden Boot race kicks off with the first one.</div>';
     return;
   }
-  const byRank = {};
-  boot.forEach((s) => { byRank[s.rank] = s; });
-  // DOM order silver, gold, bronze so the gold winner sits tall in the middle.
-  // Place rank-1 in the middle (tall), the next two on the flanks; each is
-  // styled by its own tier, so tied scorers show matching pedestals.
-  const cols = [];
-  if (byRank[2]) cols.push(gbCardHtml(byRank[2]));
-  if (byRank[1]) cols.push(gbCardHtml(byRank[1]));
-  if (byRank[3]) cols.push(gbCardHtml(byRank[3]));
   el.innerHTML =
-    `<div class="podium">${cols.join('')}</div>` +
+    awardPodiumHtml(tiers, (n) => 'goal' + (n === 1 ? '' : 's')) +
     `<div class="gb-bonus-note">🔥 Juicy bonus, added to the ladder: ` +
     `Golden Boot <strong>+5</strong> · Silver <strong>+2</strong> · Bronze <strong>+1</strong> ` +
-    `to each scorer's owner. Tied scorers share the same bonus.</div>`;
+    `to each scorer's owner. Everyone tied on the same goals shares the bonus.</div>`;
+}
+
+function renderPlaymaker(pm) {
+  const el = $('#playmaker');
+  const tiers = (pm && pm.tiers) || [];
+  if (!tiers.length) {
+    el.innerHTML =
+      '<div class="muted-note">No assists from your teams yet — the Playmaker race starts with the first killer ball.</div>';
+    return;
+  }
+  el.innerHTML =
+    awardPodiumHtml(tiers, (n) => 'assist' + (n === 1 ? '' : 's')) +
+    `<div class="gb-bonus-note pm-note">🅰️ Playmaker bonus, added to the ladder: ` +
+    `<strong>+3</strong> · <strong>+2</strong> · <strong>+1</strong> ` +
+    `to each assister's owner. Everyone tied on the same assists shares the bonus.</div>`;
 }
 
 // NeueStudio's 4-pointed sparkle mark (their brand coral), slow-spinning.

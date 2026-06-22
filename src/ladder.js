@@ -41,6 +41,35 @@ function playerSort(a, b) {
 
 const WCHB_LIMIT = 6; // how many undrafted teams to show in "What Could Have Been"
 
+const AWARD_TIERS = ['gold', 'silver', 'bronze'];
+
+// Build a tiered award from per-athlete stat rows ({athlete_id, name, team,
+// stat, photo_url}). Tiers are the top-3 distinct stat counts; EVERY athlete at
+// a count shares that tier's bonus, so ties all count. Returns { tiers, bonusByOwner }.
+function buildAward(rows, bonuses, ownerByKey) {
+  const sorted = rows
+    .slice()
+    .sort((a, b) => b.stat - a.stat || String(a.name).localeCompare(String(b.name)));
+  const counts = [...new Set(sorted.map((r) => r.stat))].sort((a, b) => b - a).slice(0, 3);
+  const tierOf = new Map(counts.map((c, i) => [c, i]));
+  const tiers = counts.map((c, i) => ({
+    place: i + 1, medal: AWARD_TIERS[i], count: c, bonus: bonuses[i] || 0, players: [],
+  }));
+  const bonusByOwner = new Map();
+  for (const r of sorted) {
+    const ti = tierOf.get(r.stat);
+    if (ti === undefined) continue; // outside the top-3 counts
+    const owner = ownerByKey.get(String(r.team).toLowerCase()) || null;
+    tiers[ti].players.push({
+      athleteId: r.athlete_id, name: r.name, team: r.team, owner,
+      count: r.stat, photoUrl: r.photo_url || null,
+    });
+    const b = bonuses[ti] || 0;
+    if (owner && b) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + b);
+  }
+  return { tiers, bonusByOwner };
+}
+
 async function computeLadder() {
   // Owned teams + their player.
   const teamsRes = await query(
@@ -95,48 +124,39 @@ async function computeLadder() {
     .sort(teamSort)
     .map((s, i) => ({ rank: i + 1, ...s }));
 
-  // Safe Pulse Golden Boot — top individual scorers among the drafted teams.
-  // The 5/2/1 bonus is added to each scorer's owner on the player ladder below.
+  // Awards among the drafted teams' players: Safe Pulse Golden Boot (goals,
+  // 5/2/1) and the Bailey Playmaker (assists, 3/2/1). Each award's tiers are the
+  // top-3 distinct counts, and EVERY player at a count shares that tier's bonus —
+  // so a third player tied on 2 goals still scores, and everyone on the next
+  // count still gets third place. Both bonuses are added to the owner below.
+  const ownedArr = [...ownedKeys];
   const scRes = await query(
     `SELECT s.athlete_id, MAX(s.athlete_name) AS name, MAX(s.team) AS team,
-            SUM(s.goals)::int AS goals, MAX(ap.photo_url) AS photo_url
+            SUM(s.goals)::int AS stat, MAX(ap.photo_url) AS photo_url
        FROM scorers s
        LEFT JOIN athlete_photos ap ON ap.athlete_id = s.athlete_id
       WHERE lower(s.team) = ANY($1::text[])
       GROUP BY s.athlete_id
-      HAVING SUM(s.goals) > 0
-      ORDER BY SUM(s.goals) DESC, MAX(s.athlete_name) ASC
-      LIMIT 3`,
-    [[...ownedKeys]]
+      HAVING SUM(s.goals) > 0`,
+    [ownedArr]
   );
-  // Bonus by goal-count rank, NOT raw position: scorers tied on goals share the
-  // same rank and the same bonus (a "draw"). Messi 3 → +5; Haaland & Mbappé both
-  // on 2 → +2 each; a clear third on 1 → +1.
-  const BOOT_BONUS = [5, 2, 1];
-  const TIERS = ['gold', 'silver', 'bronze'];
-  let denseRank = 0;
-  let prevGoals = null;
-  const goldenBoot = scRes.rows.map((r, i) => {
-    if (r.goals !== prevGoals) {
-      denseRank += 1;
-      prevGoals = r.goals;
-    }
-    return {
-      rank: i + 1, // display order (1 = most goals)
-      denseRank, // 1/2/3 by distinct goal count — tied scorers share it
-      tier: TIERS[denseRank - 1] || 'bronze',
-      athleteId: r.athlete_id,
-      name: r.name,
-      team: r.team,
-      owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
-      goals: r.goals,
-      photoUrl: r.photo_url || null,
-      bonus: BOOT_BONUS[denseRank - 1] || 0,
-    };
-  });
-  const bootBonusByOwner = new Map();
-  for (const gb of goldenBoot) {
-    if (gb.owner) bootBonusByOwner.set(gb.owner, (bootBonusByOwner.get(gb.owner) || 0) + gb.bonus);
+  const asRes = await query(
+    `SELECT a.athlete_id, MAX(a.athlete_name) AS name, MAX(a.team) AS team,
+            SUM(a.assists)::int AS stat, MAX(ap.photo_url) AS photo_url
+       FROM assists a
+       LEFT JOIN athlete_photos ap ON ap.athlete_id = a.athlete_id
+      WHERE lower(a.team) = ANY($1::text[])
+      GROUP BY a.athlete_id
+      HAVING SUM(a.assists) > 0`,
+    [ownedArr]
+  );
+  const goalsAward = buildAward(scRes.rows, [5, 2, 1], ownerByKey);
+  const assistsAward = buildAward(asRes.rows, [3, 2, 1], ownerByKey);
+  const goldenBoot = { tiers: goalsAward.tiers };
+  const playmaker = { tiers: assistsAward.tiers };
+  const bonusByOwner = new Map();
+  for (const m of [goalsAward.bonusByOwner, assistsAward.bonusByOwner]) {
+    for (const [owner, v] of m) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + v);
   }
 
   // Player ladder = combined total of each player's teams.
@@ -158,14 +178,14 @@ async function computeLadder() {
   }
   const playerLadder = [...byPlayer.values()]
     .map((p) => {
-      const bootBonus = bootBonusByOwner.get(p.player) || 0;
+      const awardBonus = bonusByOwner.get(p.player) || 0;
       return {
         ...p,
         teams: p.teams.slice().sort(),
         pct: pct(p.gf, p.ga),
         teamPoints: p.points, // points from teams only
-        bootBonus, // Golden Boot bonus added on top
-        points: p.points + bootBonus, // total used for ranking
+        awardBonus, // Golden Boot + Playmaker bonus added on top
+        points: p.points + awardBonus, // total used for ranking
       };
     })
     .sort(playerSort)
@@ -383,7 +403,7 @@ async function computeLadder() {
   const ownersObj = {};
   for (const [k, v] of ownerByKey) ownersObj[k] = v;
   const bonusObj = {};
-  for (const [k, v] of bootBonusByOwner) bonusObj[k] = v;
+  for (const [k, v] of bonusByOwner) bonusObj[k] = v;
   let boxSeat = null;
   try {
     boxSeat = titleRace({ drafted: ownedKeys, owners: ownersObj, groups: simGroups, bonus: bonusObj });
@@ -393,7 +413,7 @@ async function computeLadder() {
 
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
-    upcomingHighlight, playerNextMatches, goldenBoot, socceroos, boxSeat,
+    upcomingHighlight, playerNextMatches, goldenBoot, playmaker, socceroos, boxSeat,
   };
 }
 

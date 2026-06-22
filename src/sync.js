@@ -186,20 +186,28 @@ async function fetchSummary(eventId) {
   return resp.json();
 }
 
-// Goal scorers (excluding own goals; penalties count) for the given drafted
-// teams in an ESPN match summary. Scorer = first athlete on the goal event.
-function extractGoals(summary, draftedSet) {
-  const out = [];
+// Goals + assists (excluding own goals; penalties count) for the given teams in
+// an ESPN match summary. On a goal event, participants[0] is the scorer and
+// participants[1] (when present) is the assister — both on the scoring team.
+function extractContributions(summary, teamSet) {
+  const goals = [];
+  const assists = [];
   for (const ke of summary.keyEvents || []) {
     if ((ke.type || {}).type !== 'goal') continue;
     if (/own goal/i.test(ke.text || '')) continue;
     const team = ke.team && ke.team.displayName;
-    if (!team || !draftedSet.has(team.toLowerCase())) continue;
-    const a = (ke.participants || [])[0] && (ke.participants || [])[0].athlete;
-    if (!a || !a.id) continue;
-    out.push({ athleteId: String(a.id), athleteName: a.displayName || 'Unknown', team });
+    if (!team || !teamSet.has(team.toLowerCase())) continue;
+    const parts = ke.participants || [];
+    const scorer = parts[0] && parts[0].athlete;
+    if (scorer && scorer.id) {
+      goals.push({ athleteId: String(scorer.id), athleteName: scorer.displayName || 'Unknown', team });
+    }
+    const assister = parts[1] && parts[1].athlete;
+    if (assister && assister.id) {
+      assists.push({ athleteId: String(assister.id), athleteName: assister.displayName || 'Unknown', team });
+    }
   }
-  return out;
+  return { goals, assists };
 }
 
 // Scrape scorers for completed drafted-team matches not yet scraped. Incremental
@@ -224,18 +232,32 @@ async function syncScorers() {
   for (const { api_fixture_id: fid } of todo.rows) {
     try {
       const summary = await fetchSummary(fid);
-      const byAth = new Map();
-      for (const g of extractGoals(summary, interestSet)) {
-        if (!byAth.has(g.athleteId)) byAth.set(g.athleteId, { ...g, goals: 0 });
-        byAth.get(g.athleteId).goals += 1;
-      }
+      const { goals, assists } = extractContributions(summary, interestSet);
+      const tally = (list) => {
+        const m = new Map();
+        for (const x of list) {
+          if (!m.has(x.athleteId)) m.set(x.athleteId, { ...x, count: 0 });
+          m.get(x.athleteId).count += 1;
+        }
+        return m;
+      };
+      const byGoal = tally(goals);
+      const byAssist = tally(assists);
       await withTransaction(async (client) => {
         await client.query(`DELETE FROM scorers WHERE fixture_id = $1`, [fid]);
-        for (const g of byAth.values()) {
+        for (const g of byGoal.values()) {
           await client.query(
             `INSERT INTO scorers (fixture_id, athlete_id, athlete_name, team, goals)
              VALUES ($1,$2,$3,$4,$5)`,
-            [fid, g.athleteId, g.athleteName, g.team, g.goals]
+            [fid, g.athleteId, g.athleteName, g.team, g.count]
+          );
+        }
+        await client.query(`DELETE FROM assists WHERE fixture_id = $1`, [fid]);
+        for (const a of byAssist.values()) {
+          await client.query(
+            `INSERT INTO assists (fixture_id, athlete_id, athlete_name, team, assists)
+             VALUES ($1,$2,$3,$4,$5)`,
+            [fid, a.athleteId, a.athleteName, a.team, a.count]
           );
         }
         await client.query(
@@ -294,11 +316,15 @@ async function resolvePhoto(name) {
 // sync; once resolved an athlete is skipped, so it stays cheap. Returns count.
 async function resolveMissingPhotos() {
   const rows = (await query(
-    `SELECT s.athlete_id, MAX(s.athlete_name) AS name
-       FROM scorers s
-       LEFT JOIN athlete_photos ap ON ap.athlete_id = s.athlete_id
+    `SELECT x.athlete_id, MAX(x.athlete_name) AS name
+       FROM (
+         SELECT athlete_id, athlete_name FROM scorers
+         UNION ALL
+         SELECT athlete_id, athlete_name FROM assists
+       ) x
+       LEFT JOIN athlete_photos ap ON ap.athlete_id = x.athlete_id
       WHERE ap.athlete_id IS NULL OR ap.photo_url IS NULL
-      GROUP BY s.athlete_id`
+      GROUP BY x.athlete_id`
   )).rows;
   let resolved = 0;
   for (const r of rows) {

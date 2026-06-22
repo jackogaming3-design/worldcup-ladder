@@ -64,10 +64,27 @@ CREATE TABLE IF NOT EXISTS scraped_fixtures (
   scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Player photos for the Golden Boot podium, resolved from Wikipedia by name.
+-- Player photos for the award podiums, resolved from Wikipedia by name.
 CREATE TABLE IF NOT EXISTS athlete_photos (
   athlete_id  TEXT PRIMARY KEY,
   name        TEXT,
   photo_url   TEXT,
   resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Assists per fixture (for the Bailey Playmaker award), mirrors `scorers`.
+CREATE TABLE IF NOT EXISTS assists (
+  fixture_id   TEXT NOT NULL,
+  athlete_id   TEXT NOT NULL,
+  athlete_name TEXT NOT NULL,
+  team         TEXT NOT NULL,
+  assists      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (fixture_id, athlete_id)
+);
+CREATE INDEX IF NOT EXISTS idx_assists_team ON assists (lower(team));
+
+-- Small key/value store for one-time migrations.
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT
 );

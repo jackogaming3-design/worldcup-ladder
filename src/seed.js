@@ -32,6 +32,18 @@ async function seed() {
       );
     }
 
+    // One-time backfill: assist tracking was added after some fixtures had
+    // already been scraped for goals. Clear the scraped marker once so the next
+    // sync re-reads those summaries and captures assists too.
+    const done = await client.query(`SELECT 1 FROM meta WHERE key = 'assists_backfill_v1'`);
+    if (!done.rows.length) {
+      await client.query(`DELETE FROM scraped_fixtures`);
+      await client.query(
+        `INSERT INTO meta (key, value) VALUES ('assists_backfill_v1', 'done')
+         ON CONFLICT (key) DO NOTHING`
+      );
+    }
+
     for (const { player, teams } of SEED) {
       const res = await client.query(
         `INSERT INTO players (name) VALUES ($1)
