@@ -55,7 +55,6 @@ function buildAward(rows, bonuses, ownerByKey) {
   const tiers = counts.map((c, i) => ({
     place: i + 1, medal: AWARD_TIERS[i], count: c, bonus: bonuses[i] || 0, players: [],
   }));
-  const bonusByOwner = new Map();
   for (const r of sorted) {
     const ti = tierOf.get(r.stat);
     if (ti === undefined) continue; // outside the top-3 counts
@@ -64,9 +63,17 @@ function buildAward(rows, bonuses, ownerByKey) {
       athleteId: r.athlete_id, name: r.name, team: r.team, owner,
       count: r.stat, photoUrl: r.photo_url || null,
     });
-    const b = bonuses[ti] || 0;
-    if (owner && b) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + b);
   }
+  // An owner earns each tier's bonus ONCE if they have at least one player there
+  // — not per player. So a player on 1st plus a player on 3rd is 5 + 1, however
+  // many players they have tied at each spot.
+  const bonusByOwner = new Map();
+  tiers.forEach((tier, ti) => {
+    const b = bonuses[ti] || 0;
+    if (!b) return;
+    const owners = new Set(tier.players.map((p) => p.owner).filter(Boolean));
+    for (const owner of owners) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + b);
+  });
   return { tiers, bonusByOwner };
 }
 

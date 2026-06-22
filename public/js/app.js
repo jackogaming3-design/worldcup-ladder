@@ -430,9 +430,9 @@ function renderGoldenBoot(boot) {
   }
   el.innerHTML =
     awardPodiumHtml(tiers, (n) => 'goal' + (n === 1 ? '' : 's')) +
-    `<div class="gb-bonus-note">🔥 Juicy bonus, added to the ladder: ` +
-    `Golden Boot <strong>+5</strong> · Silver <strong>+2</strong> · Bronze <strong>+1</strong> ` +
-    `to each scorer's owner. Everyone tied on the same goals shares the bonus.</div>`;
+    `<div class="gb-bonus-note">🔥 Added to the ladder: <strong>+5</strong> if you've got a player on gold · ` +
+    `<strong>+2</strong> silver · <strong>+1</strong> bronze — once per spot, ` +
+    `however many of your players are on it.</div>`;
 }
 
 function renderPlaymaker(pm) {
@@ -445,9 +445,9 @@ function renderPlaymaker(pm) {
   }
   el.innerHTML =
     awardPodiumHtml(tiers, (n) => 'assist' + (n === 1 ? '' : 's')) +
-    `<div class="gb-bonus-note pm-note">🅰️ Playmaker bonus, added to the ladder: ` +
-    `<strong>+3</strong> · <strong>+2</strong> · <strong>+1</strong> ` +
-    `to each assister's owner. Everyone tied on the same assists shares the bonus.</div>`;
+    `<div class="gb-bonus-note pm-note">🅰️ Playmaker bonus: <strong>+3</strong> if you've got a player on gold · ` +
+    `<strong>+2</strong> silver · <strong>+1</strong> bronze — once per spot, ` +
+    `however many of your players are on it.</div>`;
 }
 
 // NeueStudio's 4-pointed sparkle mark (their brand coral), slow-spinning.
