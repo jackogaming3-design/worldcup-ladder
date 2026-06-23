@@ -246,8 +246,8 @@ async function computeLadder() {
         teams: p.teams.slice().sort(),
         pct: pct(p.gf, p.ga),
         teamPoints: p.points, // points from teams only
-        awardBonus, // Golden Boot + Playmaker bonus added on top
-        points: p.points + awardBonus, // total used for ranking
+        awardBonus, // computed for reference only — NOT added to points
+        points: p.points, // team results only — awards are bragging rights, no points
       };
     })
     .sort(playerSort)
@@ -464,8 +464,7 @@ async function computeLadder() {
   }
   const ownersObj = {};
   for (const [k, v] of ownerByKey) ownersObj[k] = v;
-  const bonusObj = {};
-  for (const [k, v] of bonusByOwner) bonusObj[k] = v;
+  const bonusObj = {}; // awards no longer add points — title race is team-results only
   let boxSeat = null;
   try {
     boxSeat = titleRace({ drafted: ownedKeys, owners: ownersObj, groups: simGroups, bonus: bonusObj });
