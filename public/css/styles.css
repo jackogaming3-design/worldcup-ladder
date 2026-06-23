@@ -343,6 +343,30 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
   .pm-hero-sub { font-size: 0.8rem; }
 }
 
+/* ---------- Single-winner trophy awards (Bad Boy, Dropped Head) ---------- */
+.trophy-card {
+  display: flex; align-items: stretch; overflow: hidden;
+  border-radius: var(--radius); box-shadow: var(--shadow); color: #fff;
+}
+.trophy-img { width: 200px; object-fit: cover; object-position: center top; flex-shrink: 0; }
+.trophy-card.dropped-head .trophy-img { object-position: center; }
+.trophy-card.no-img .trophy-img { display: none; }
+.trophy-body { padding: 20px 22px; display: flex; flex-direction: column; justify-content: center; gap: 8px; flex: 1; }
+.trophy-kicker { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 800; }
+.trophy-title { font-size: 1.45rem; font-weight: 900; margin: 0; line-height: 1.05; color: #fff; }
+.trophy-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.trophy-stat { font-size: 0.86rem; font-weight: 700; opacity: 0.95; }
+.trophy-sub { font-size: 0.86rem; margin: 0; opacity: 0.9; }
+.trophy-card.bad-boy { background: linear-gradient(135deg, #7c2d12, #c2410c); }
+.trophy-card.bad-boy .trophy-kicker { color: #fed7aa; }
+.trophy-card.dropped-head { background: linear-gradient(135deg, #1f2937, #4b5563); }
+.trophy-card.dropped-head .trophy-kicker { color: #cbd5e1; }
+@media (max-width: 560px) {
+  .trophy-card { flex-direction: column; }
+  .trophy-img { width: 100%; height: 190px; }
+  .trophy-body { padding: 16px; }
+}
+
 /* ---------- Socceroos Spotlight (NeueStudio) ---------- */
 .spotlight-stage {
   position: relative; overflow: hidden; isolation: isolate;

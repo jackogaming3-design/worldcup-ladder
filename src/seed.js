@@ -43,6 +43,15 @@ async function seed() {
          ON CONFLICT (key) DO NOTHING`
       );
     }
+    // Same again for cards (added after assists): re-read scraped fixtures once.
+    const doneCards = await client.query(`SELECT 1 FROM meta WHERE key = 'cards_backfill_v1'`);
+    if (!doneCards.rows.length) {
+      await client.query(`DELETE FROM scraped_fixtures`);
+      await client.query(
+        `INSERT INTO meta (key, value) VALUES ('cards_backfill_v1', 'done')
+         ON CONFLICT (key) DO NOTHING`
+      );
+    }
 
     for (const { player, teams } of SEED) {
       const res = await client.query(

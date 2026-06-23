@@ -192,22 +192,30 @@ async function fetchSummary(eventId) {
 function extractContributions(summary, teamSet) {
   const goals = [];
   const assists = [];
+  const cards = [];
   for (const ke of summary.keyEvents || []) {
-    if ((ke.type || {}).type !== 'goal') continue;
-    if (/own goal/i.test(ke.text || '')) continue;
+    const typeId = (ke.type || {}).type || '';
+    const typeText = (ke.type || {}).text || '';
     const team = ke.team && ke.team.displayName;
     if (!team || !teamSet.has(team.toLowerCase())) continue;
-    const parts = ke.participants || [];
-    const scorer = parts[0] && parts[0].athlete;
-    if (scorer && scorer.id) {
-      goals.push({ athleteId: String(scorer.id), athleteName: scorer.displayName || 'Unknown', team });
-    }
-    const assister = parts[1] && parts[1].athlete;
-    if (assister && assister.id) {
-      assists.push({ athleteId: String(assister.id), athleteName: assister.displayName || 'Unknown', team });
+    if (typeId === 'goal') {
+      if (/own goal/i.test(ke.text || '')) continue;
+      const parts = ke.participants || [];
+      const scorer = parts[0] && parts[0].athlete;
+      if (scorer && scorer.id) {
+        goals.push({ athleteId: String(scorer.id), athleteName: scorer.displayName || 'Unknown', team });
+      }
+      const assister = parts[1] && parts[1].athlete;
+      if (assister && assister.id) {
+        assists.push({ athleteId: String(assister.id), athleteName: assister.displayName || 'Unknown', team });
+      }
+    } else if (/card/i.test(typeId) || /card/i.test(typeText)) {
+      // Red (or second-yellow) counts double; a straight yellow counts once.
+      const red = /red/i.test(typeId) || /red/i.test(typeText);
+      cards.push({ team, red });
     }
   }
-  return { goals, assists };
+  return { goals, assists, cards };
 }
 
 // Scrape scorers for completed drafted-team matches not yet scraped. Incremental
@@ -232,7 +240,13 @@ async function syncScorers() {
   for (const { api_fixture_id: fid } of todo.rows) {
     try {
       const summary = await fetchSummary(fid);
-      const { goals, assists } = extractContributions(summary, interestSet);
+      const { goals, assists, cards } = extractContributions(summary, interestSet);
+      const cardByTeam = new Map();
+      for (const c of cards) {
+        if (!cardByTeam.has(c.team)) cardByTeam.set(c.team, { team: c.team, yellows: 0, reds: 0 });
+        const e = cardByTeam.get(c.team);
+        if (c.red) e.reds += 1; else e.yellows += 1;
+      }
       const tally = (list) => {
         const m = new Map();
         for (const x of list) {
@@ -258,6 +272,13 @@ async function syncScorers() {
             `INSERT INTO assists (fixture_id, athlete_id, athlete_name, team, assists)
              VALUES ($1,$2,$3,$4,$5)`,
             [fid, a.athleteId, a.athleteName, a.team, a.count]
+          );
+        }
+        await client.query(`DELETE FROM cards WHERE fixture_id = $1`, [fid]);
+        for (const c of cardByTeam.values()) {
+          await client.query(
+            `INSERT INTO cards (fixture_id, team, yellows, reds) VALUES ($1,$2,$3,$4)`,
+            [fid, c.team, c.yellows, c.reds]
           );
         }
         await client.query(

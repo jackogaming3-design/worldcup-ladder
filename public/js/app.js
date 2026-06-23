@@ -46,6 +46,8 @@ async function load() {
   renderBoxSeat(body.boxSeat);
   renderGoldenBoot(body.goldenBoot);
   renderPlaymaker(body.playmaker);
+  renderBadBoy(body.badBoy);
+  renderDroppedHead(body.droppedHead);
   renderTeamLadder(body.teamLadder);
   renderSocceroos(body.socceroos);
   renderBreakdown(body.teamLadder, body.playerLadder);
@@ -448,6 +450,48 @@ function renderPlaymaker(pm) {
     `<div class="gb-bonus-note pm-note">🅰️ Playmaker bonus: <strong>+3</strong> if you've got a player on gold · ` +
     `<strong>+2</strong> silver · <strong>+1</strong> bronze — once per spot, ` +
     `however many of your players are on it.</div>`;
+}
+
+function renderBadBoy(b) {
+  const el = $('#bad-boy');
+  if (!b || !b.owner) {
+    el.innerHTML =
+      `<div class="trophy-kicker">🚨 Bobby Bad Boy Award · +1</div>` +
+      `<h2 class="trophy-title">Most Cards</h2>` +
+      `<p class="trophy-sub">No bookings for your teams yet — someone's bound to snap.</p>`;
+    return;
+  }
+  const tally = [];
+  if (b.yellows) tally.push(`${b.yellows} 🟨`);
+  if (b.reds) tally.push(`${b.reds} 🟥`);
+  el.innerHTML =
+    `<div class="trophy-kicker">🚨 Bobby Bad Boy Award · +1</div>` +
+    `<h2 class="trophy-title">${flag(b.team)} ${esc(b.team)}</h2>` +
+    `<div class="trophy-meta">` +
+      `<span class="owner-chip" style="${ownerChipStyle(b.owner)}">${esc(b.owner)}</span>` +
+      `<span class="trophy-stat">${tally.join(' · ') || 'no cards'} = ${b.points} pts</span>` +
+    `</div>` +
+    `<p class="trophy-sub">Dirtiest squad in the comp. <strong>+1</strong> to ${esc(b.owner)} for the rap sheet.</p>`;
+}
+
+function renderDroppedHead(d) {
+  const el = $('#dropped-head');
+  if (!d || !d.owner) {
+    el.innerHTML =
+      `<div class="trophy-kicker">😩 Jacko Dropped Head Award · +1</div>` +
+      `<h2 class="trophy-title">Biggest Upset</h2>` +
+      `<p class="trophy-sub">No favourites have bottled it yet. Give it time.</p>`;
+    return;
+  }
+  const fav = Math.round(d.favouritism * 100);
+  el.innerHTML =
+    `<div class="trophy-kicker">😩 Jacko Dropped Head Award · +1</div>` +
+    `<h2 class="trophy-title">${flag(d.team)} ${esc(d.team)} bottled it</h2>` +
+    `<div class="trophy-meta">` +
+      `<span class="owner-chip" style="${ownerChipStyle(d.owner)}">${esc(d.owner)}</span>` +
+      `<span class="trophy-stat">${fav}% favourite · lost ${d.teamGoals}–${d.oppGoals} to ${flag(d.opponent)} ${esc(d.opponent)}</span>` +
+    `</div>` +
+    `<p class="trophy-sub">A pity <strong>+1</strong> to ${esc(d.owner)} for the heartbreak.</p>`;
 }
 
 // NeueStudio's 4-pointed sparkle mark (their brand coral), slow-spinning.

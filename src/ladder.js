@@ -2,7 +2,7 @@
 
 const { query } = require('./db');
 const { config } = require('./config');
-const { predict, titleRace } = require('./predict');
+const { predict, titleRace, elo } = require('./predict');
 const { POINTS, isCompleted, resultFor } = require('./scoring');
 
 // Stats are ALWAYS derived from the matches table — never stored — so the
@@ -164,6 +164,61 @@ async function computeLadder() {
   const bonusByOwner = new Map();
   for (const m of [goalsAward.bonusByOwner, assistsAward.bonusByOwner]) {
     for (const [owner, v] of m) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + v);
+  }
+
+  // Bobby Bad Boy — the single dirtiest drafted team (yellow 1, red 2). One
+  // owner, +1. Tiebreak: card points, then reds, then team name.
+  const cardRes = await query(
+    `SELECT team, SUM(yellows)::int AS yellows, SUM(reds)::int AS reds
+       FROM cards WHERE lower(team) = ANY($1::text[]) GROUP BY team`,
+    [ownedArr]
+  );
+  let badBoy = null;
+  for (const r of cardRes.rows) {
+    const points = r.yellows + r.reds * 2;
+    if (points <= 0) continue;
+    const cand = {
+      team: r.team, owner: ownerByKey.get(String(r.team).toLowerCase()) || null,
+      yellows: r.yellows, reds: r.reds, points, bonus: 1,
+    };
+    if (!badBoy || cand.points > badBoy.points ||
+        (cand.points === badBoy.points && cand.reds > badBoy.reds) ||
+        (cand.points === badBoy.points && cand.reds === badBoy.reds && cand.team < badBoy.team)) {
+      badBoy = cand;
+    }
+  }
+  if (badBoy && badBoy.owner) bonusByOwner.set(badBoy.owner, (bonusByOwner.get(badBoy.owner) || 0) + 1);
+
+  // Jacko Dropped Head — biggest upset: a drafted team that lost when it was a
+  // clear favourite (Elo win prob >= 60%). One owner, +1 pity point.
+  let droppedHead = null;
+  for (const m of allMatches) {
+    if (!isCompleted(m.status) || m.home_goals == null || m.away_goals == null) continue;
+    const r = resultFor({
+      homeTeam: m.home_team, awayTeam: m.away_team,
+      homeGoals: m.home_goals, awayGoals: m.away_goals, winnerTeam: m.winner_team,
+    });
+    const losers = [];
+    if (ownedKeys.has(m.home_team.toLowerCase()) && r.home === 'L') {
+      losers.push({ team: m.home_team, opp: m.away_team, tg: m.home_goals, og: m.away_goals });
+    }
+    if (ownedKeys.has(m.away_team.toLowerCase()) && r.away === 'L') {
+      losers.push({ team: m.away_team, opp: m.home_team, tg: m.away_goals, og: m.home_goals });
+    }
+    for (const s of losers) {
+      const winProb = 1 / (1 + 10 ** ((elo(s.opp) - elo(s.team)) / 400));
+      if (winProb < 0.6) continue; // only "heavy favourite" losses qualify
+      const cand = {
+        team: s.team, opponent: s.opp,
+        owner: ownerByKey.get(s.team.toLowerCase()) || null,
+        teamGoals: s.tg, oppGoals: s.og, favouritism: winProb,
+        date: m.match_date, round: m.round, bonus: 1,
+      };
+      if (!droppedHead || cand.favouritism > droppedHead.favouritism) droppedHead = cand;
+    }
+  }
+  if (droppedHead && droppedHead.owner) {
+    bonusByOwner.set(droppedHead.owner, (bonusByOwner.get(droppedHead.owner) || 0) + 1);
   }
 
   // Player ladder = combined total of each player's teams.
@@ -420,7 +475,8 @@ async function computeLadder() {
 
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
-    upcomingHighlight, playerNextMatches, goldenBoot, playmaker, socceroos, boxSeat,
+    upcomingHighlight, playerNextMatches, goldenBoot, playmaker,
+    badBoy, droppedHead, socceroos, boxSeat,
   };
 }
 

@@ -83,6 +83,16 @@ CREATE TABLE IF NOT EXISTS assists (
 );
 CREATE INDEX IF NOT EXISTS idx_assists_team ON assists (lower(team));
 
+-- Cards per fixture/team (for the Bobby Bad Boy award). Yellow = 1, red = 2.
+CREATE TABLE IF NOT EXISTS cards (
+  fixture_id TEXT NOT NULL,
+  team       TEXT NOT NULL,
+  yellows    INTEGER NOT NULL DEFAULT 0,
+  reds       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (fixture_id, team)
+);
+CREATE INDEX IF NOT EXISTS idx_cards_team ON cards (lower(team));
+
 -- Small key/value store for one-time migrations.
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
