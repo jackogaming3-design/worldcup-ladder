@@ -139,6 +139,7 @@ function renderPlayerCards(players) {
           <div class="pcard-name">${esc(p.player)}</div>
           <div class="pcard-teams">${teams}</div>
           <div class="pcard-stats">${statRow(p)}</div>
+          ${p.awardBonus ? `<div class="pcard-bonus">🏅 +${p.awardBonus} award bonus</div>` : ''}
         </div>
         <div class="pcard-points"><strong>${p.points}</strong><span>pts</span></div>
       </article>`;
@@ -372,6 +373,7 @@ function awardColHtml(tier, statLabel) {
       </div>
       <div class="podium-block ${place}-block">
         <span class="podium-medal">${medal}</span>
+        <span class="podium-bonus">+${tier.bonus}</span>
       </div>
     </div>`;
 }
@@ -417,7 +419,7 @@ function renderBoxSeat(b) {
         ${favs}
       </div>
     </div>
-    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results) thousands of times.</div>`;
+    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results + Golden Boot &amp; Playmaker bonus) thousands of times.</div>`;
 }
 
 function renderGoldenBoot(boot) {
@@ -430,7 +432,9 @@ function renderGoldenBoot(boot) {
   }
   el.innerHTML =
     awardPodiumHtml(tiers, (n) => 'goal' + (n === 1 ? '' : 's')) +
-    `<div class="gb-bonus-note">🔥 Golden Boot glory — the deadliest finishers from your teams. Bragging rights only, no ladder points.</div>`;
+    `<div class="gb-bonus-note">🔥 Added to the ladder: <strong>+5</strong> if you've got a player on gold · ` +
+    `<strong>+2</strong> silver · <strong>+1</strong> bronze — once per spot, ` +
+    `however many of your players are on it.</div>`;
 }
 
 function renderPlaymaker(pm) {
@@ -443,7 +447,9 @@ function renderPlaymaker(pm) {
   }
   el.innerHTML =
     awardPodiumHtml(tiers, (n) => 'assist' + (n === 1 ? '' : 's')) +
-    `<div class="gb-bonus-note pm-note">🅰️ Playmaker glory — your sharpest providers. Bragging rights only, no ladder points.</div>`;
+    `<div class="gb-bonus-note pm-note">🅰️ Playmaker bonus: <strong>+3</strong> if you've got a player on gold · ` +
+    `<strong>+2</strong> silver · <strong>+1</strong> bronze — once per spot, ` +
+    `however many of your players are on it.</div>`;
 }
 
 function renderBadBoy(b) {

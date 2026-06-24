@@ -166,8 +166,8 @@ async function computeLadder() {
     for (const [owner, v] of m) bonusByOwner.set(owner, (bonusByOwner.get(owner) || 0) + v);
   }
 
-  // Bobby Bad Boy — the single dirtiest drafted team (yellow 1, red 2). One
-  // owner, +1. Tiebreak: card points, then reds, then team name.
+  // Bobby Bad Boy — the single dirtiest drafted team (yellow 1, red 2).
+  // Display only — adds NO ladder points. Tiebreak: card points, then reds, then name.
   const cardRes = await query(
     `SELECT team, SUM(yellows)::int AS yellows, SUM(reds)::int AS reds
        FROM cards WHERE lower(team) = ANY($1::text[]) GROUP BY team`,
@@ -187,10 +187,10 @@ async function computeLadder() {
       badBoy = cand;
     }
   }
-  if (badBoy && badBoy.owner) bonusByOwner.set(badBoy.owner, (bonusByOwner.get(badBoy.owner) || 0) + 1);
+  // (Bad Boy is display-only — it does not add to bonusByOwner.)
 
   // Jacko Dropped Head — biggest upset: a drafted team that lost when it was a
-  // clear favourite (Elo win prob >= 60%). One owner, +1 pity point.
+  // clear favourite (Elo win prob >= 60%). Display only — adds NO ladder points.
   let droppedHead = null;
   for (const m of allMatches) {
     if (!isCompleted(m.status) || m.home_goals == null || m.away_goals == null) continue;
@@ -217,9 +217,7 @@ async function computeLadder() {
       if (!droppedHead || cand.favouritism > droppedHead.favouritism) droppedHead = cand;
     }
   }
-  if (droppedHead && droppedHead.owner) {
-    bonusByOwner.set(droppedHead.owner, (bonusByOwner.get(droppedHead.owner) || 0) + 1);
-  }
+  // (Dropped Head is display-only — it does not add to bonusByOwner.)
 
   // Player ladder = combined total of each player's teams.
   const byPlayer = new Map();
@@ -246,8 +244,8 @@ async function computeLadder() {
         teams: p.teams.slice().sort(),
         pct: pct(p.gf, p.ga),
         teamPoints: p.points, // points from teams only
-        awardBonus, // computed for reference only — NOT added to points
-        points: p.points, // team results only — awards are bragging rights, no points
+        awardBonus, // Golden Boot + Playmaker bonus added on top
+        points: p.points + awardBonus, // total used for ranking
       };
     })
     .sort(playerSort)
@@ -464,7 +462,8 @@ async function computeLadder() {
   }
   const ownersObj = {};
   for (const [k, v] of ownerByKey) ownersObj[k] = v;
-  const bonusObj = {}; // awards no longer add points — title race is team-results only
+  const bonusObj = {};
+  for (const [k, v] of bonusByOwner) bonusObj[k] = v;
   let boxSeat = null;
   try {
     boxSeat = titleRace({ drafted: ownedKeys, owners: ownersObj, groups: simGroups, bonus: bonusObj });
