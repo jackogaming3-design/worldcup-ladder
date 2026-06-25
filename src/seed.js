@@ -52,6 +52,16 @@ async function seed() {
          ON CONFLICT (key) DO NOTHING`
       );
     }
+    // One-off: clear all scrape markers once to re-read every match for late
+    // ESPN goal/assist updates that the old once-only scrape had missed.
+    const doneRescrape = await client.query(`SELECT 1 FROM meta WHERE key = 'rescrape_all_v1'`);
+    if (!doneRescrape.rows.length) {
+      await client.query(`DELETE FROM scraped_fixtures`);
+      await client.query(
+        `INSERT INTO meta (key, value) VALUES ('rescrape_all_v1', 'done')
+         ON CONFLICT (key) DO NOTHING`
+      );
+    }
 
     for (const { player, teams } of SEED) {
       const res = await client.query(

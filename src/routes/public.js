@@ -59,6 +59,27 @@ router.get('/ladder', async (req, res, next) => {
   }
 });
 
+// POST /api/refresh — public "Sync Now" button. Forces a sync (bypassing the
+// staleness check), guarded by the shared lock + a short cooldown so it can't be
+// spammed. Fires in the background and returns immediately.
+router.post('/refresh', async (req, res, next) => {
+  try {
+    if (autoSyncing) {
+      return res.json({ ok: true, started: false, message: 'A sync is already running — hang tight.' });
+    }
+    const recent = await lastSync();
+    const finishedAt = recent && recent.finished_at ? new Date(recent.finished_at).getTime() : 0;
+    if (finishedAt && Date.now() - finishedAt < 20 * 1000) {
+      return res.json({ ok: true, started: false, message: 'Already up to date — synced seconds ago.' });
+    }
+    autoSyncing = true;
+    runSync({ trigger: 'manual' }).catch(() => {}).finally(() => { autoSyncing = false; });
+    res.json({ ok: true, started: true, message: 'Syncing the latest results…' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/players — all players with their teams.
 router.get('/players', async (req, res, next) => {
   try {

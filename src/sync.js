@@ -228,11 +228,15 @@ async function syncScorers() {
   const interest = [...new Set([...drafted, config.spotlightTeam.toLowerCase()])];
   const interestSet = new Set(interest);
 
+  // Scrape fixtures we haven't read yet, PLUS re-read anything that finished in
+  // the last 2 days — ESPN often fills in / corrects goals & assists for a while
+  // after the final whistle, and a once-only scrape would miss those updates.
   const todo = await query(
     `SELECT api_fixture_id FROM matches
       WHERE status IN ('FT','AET','PEN','AWD','WO')
         AND (lower(home_team) = ANY($1::text[]) OR lower(away_team) = ANY($1::text[]))
-        AND api_fixture_id NOT IN (SELECT fixture_id FROM scraped_fixtures)`,
+        AND ( api_fixture_id NOT IN (SELECT fixture_id FROM scraped_fixtures)
+              OR match_date > NOW() - INTERVAL '2 days' )`,
     [interest]
   );
 

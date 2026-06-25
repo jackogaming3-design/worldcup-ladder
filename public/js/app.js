@@ -59,29 +59,26 @@ async function load() {
 
 function renderCommish(data) {
   const area = $('#commish-area');
-  if (IS_ADMIN) {
-    area.innerHTML =
-      `<button id="sync-btn" class="btn btn-sync">⟳ Sync Latest Results</button>
-       <a class="btn btn-ghost" href="/admin">Commissioner Controls</a>`;
-    $('#sync-btn').addEventListener('click', onSync);
-  } else {
-    area.innerHTML = `<a class="btn btn-ghost" href="/admin">Commissioner Controls</a>`;
-  }
+  // Public manual-sync button for everyone, alongside the commissioner link.
+  area.innerHTML =
+    `<button id="refresh-btn" class="btn btn-sync">⟳ Sync Now</button>` +
+    `<a class="btn btn-ghost" href="/admin">Commissioner Controls</a>`;
+  $('#refresh-btn').addEventListener('click', onRefresh);
 }
 
-async function onSync() {
-  const btn = $('#sync-btn');
+async function onRefresh() {
+  const btn = $('#refresh-btn');
   btn.disabled = true;
   btn.textContent = '⟳ Syncing…';
-  const { ok, body } = await api('/api/admin/sync-results', { method: 'POST' });
+  const { ok, body } = await api('/api/refresh', { method: 'POST' });
   if (ok && body && body.ok) {
-    toast(body.message || 'Results synced.', 'ok');
-    await load();
+    toast(body.message || 'Syncing latest results…', 'ok');
+    // Give the background sync time to finish, then refresh the ladder.
+    setTimeout(() => load(), body.started ? 25000 : 1500);
   } else {
-    toast((body && (body.error || body.message)) || 'Sync failed.', 'err');
-    btn.disabled = false;
-    btn.textContent = '⟳ Sync Latest Results';
+    toast((body && (body.error || body.message)) || 'Sync failed — try again shortly.', 'err');
   }
+  setTimeout(() => { btn.disabled = false; btn.textContent = '⟳ Sync Now'; }, 3000);
 }
 
 function renderStatus(data) {
