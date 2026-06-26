@@ -233,15 +233,14 @@ async function syncScorers() {
   const interest = [...new Set([...drafted, config.spotlightTeam.toLowerCase()])];
   const interestSet = new Set(interest);
 
-  // Scrape fixtures we haven't read yet, PLUS re-read anything that finished in
-  // the last 2 days — ESPN often fills in / corrects goals & assists for a while
-  // after the final whistle, and a once-only scrape would miss those updates.
+  // Re-scrape EVERY completed match involving an interest team on each sync. The
+  // tournament has few matches, so this is cheap, and it guarantees scorers/
+  // assists are always current and correct — no stale-cache or partial-rescrape
+  // bugs (ESPN also fills in / corrects events for a while after the whistle).
   const todo = await query(
     `SELECT api_fixture_id FROM matches
       WHERE status IN ('FT','AET','PEN','AWD','WO')
-        AND (lower(home_team) = ANY($1::text[]) OR lower(away_team) = ANY($1::text[]))
-        AND ( api_fixture_id NOT IN (SELECT fixture_id FROM scraped_fixtures)
-              OR match_date > NOW() - INTERVAL '2 days' )`,
+        AND (lower(home_team) = ANY($1::text[]) OR lower(away_team) = ANY($1::text[]))`,
     [interest]
   );
 
