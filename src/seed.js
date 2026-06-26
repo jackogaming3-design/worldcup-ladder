@@ -62,6 +62,16 @@ async function seed() {
          ON CONFLICT (key) DO NOTHING`
       );
     }
+    // Re-read every match once more after fixing goal-type detection (headers,
+    // volleys, free-kicks and penalties were previously missed).
+    const doneGoalTypes = await client.query(`SELECT 1 FROM meta WHERE key = 'goaltypes_rescrape_v1'`);
+    if (!doneGoalTypes.rows.length) {
+      await client.query(`DELETE FROM scraped_fixtures`);
+      await client.query(
+        `INSERT INTO meta (key, value) VALUES ('goaltypes_rescrape_v1', 'done')
+         ON CONFLICT (key) DO NOTHING`
+      );
+    }
 
     for (const { player, teams } of SEED) {
       const res = await client.query(

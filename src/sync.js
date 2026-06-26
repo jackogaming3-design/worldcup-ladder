@@ -198,8 +198,13 @@ function extractContributions(summary, teamSet) {
     const typeText = (ke.type || {}).text || '';
     const team = ke.team && ke.team.displayName;
     if (!team || !teamSet.has(team.toLowerCase())) continue;
-    if (typeId === 'goal') {
-      if (/own goal/i.test(ke.text || '')) continue;
+    const tBlob = `${typeId} ${typeText}`.toLowerCase();
+    const isOwnGoal = tBlob.includes('own-goal') || tBlob.includes('own goal') || /own goal/i.test(ke.text || '');
+    const isShootout = /shoot.?out/i.test(`${typeText} ${ke.text || ''}`);
+    // Count every kind of scored goal — plain, header, volley, free-kick, penalty.
+    // ESPN tags them goal---header, penalty---scored, etc., not just type "goal".
+    const isGoal = !isOwnGoal && !isShootout && (/goal/.test(tBlob) || /penalty.*scored/.test(tBlob));
+    if (isGoal) {
       const parts = ke.participants || [];
       const scorer = parts[0] && parts[0].athlete;
       if (scorer && scorer.id) {
