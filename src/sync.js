@@ -160,12 +160,15 @@ async function upsertMatch(client, m) {
         match_date  = EXCLUDED.match_date,
         raw_json    = EXCLUDED.raw_json,
         updated_at  = NOW()
-     WHERE  matches.status      IS DISTINCT FROM EXCLUDED.status
+     WHERE  matches.home_team   IS DISTINCT FROM EXCLUDED.home_team
+        OR  matches.away_team   IS DISTINCT FROM EXCLUDED.away_team
+        OR  matches.status      IS DISTINCT FROM EXCLUDED.status
         OR  matches.home_goals  IS DISTINCT FROM EXCLUDED.home_goals
         OR  matches.away_goals  IS DISTINCT FROM EXCLUDED.away_goals
         OR  matches.home_pen    IS DISTINCT FROM EXCLUDED.home_pen
         OR  matches.away_pen    IS DISTINCT FROM EXCLUDED.away_pen
         OR  matches.winner_team IS DISTINCT FROM EXCLUDED.winner_team
+        OR  matches.round       IS DISTINCT FROM EXCLUDED.round
         OR  matches.match_date  IS DISTINCT FROM EXCLUDED.match_date
      RETURNING id`,
     [
