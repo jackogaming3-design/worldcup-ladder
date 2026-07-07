@@ -401,7 +401,9 @@ function renderBoxSeat(b) {
     <div class="bs-fav${f.alive === false ? ' out' : ''}">
       <span class="bs-fav-team">${flag(f.team)} ${esc(f.team)}</span>
       <span class="bs-fav-pct">${f.alive === false ? 'out' : fmtWin(f.pct)}</span>
-      <span class="owner-chip bs-fav-owner" style="${ownerChipStyle(f.owner)}">${esc(f.owner)}</span>
+      ${f.owner
+        ? `<span class="owner-chip bs-fav-owner" style="${ownerChipStyle(f.owner)}">${esc(f.owner)}</span>`
+        : '<span class="bs-fav-owner outside">outside</span>'}
     </div>`).join('');
   el.innerHTML = `
     <div class="bs-grid">
@@ -410,7 +412,7 @@ function renderBoxSeat(b) {
         ${rows}
       </div>
       <div class="bs-card">
-        <div class="bs-card-title">🌍 World Cup winner — your teams</div>
+        <div class="bs-card-title">🌍 World Cup winner odds</div>
         ${favs}
       </div>
     </div>

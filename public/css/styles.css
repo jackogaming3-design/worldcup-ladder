@@ -440,6 +440,7 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
 .bs-fav-pct { font-weight: 800; color: var(--brand-1); }
 .bs-fav-owner { font-size: 0.7rem; }
 .bs-fav-owner.none { color: var(--muted); font-weight: 600; }
+.bs-fav-owner.outside { color: var(--muted); font-weight: 600; font-style: italic; }
 .bs-fav.out { opacity: 0.5; }
 .bs-fav.out .bs-fav-team { text-decoration: line-through; }
 .bs-fav.out .bs-fav-pct { color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.06em; }

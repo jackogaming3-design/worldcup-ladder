@@ -2,7 +2,7 @@
 
 const { query } = require('./db');
 const { config } = require('./config');
-const { predict, titleRace, elo } = require('./predict');
+const { predict, titleRace, elo, worldCupOdds } = require('./predict');
 const { POINTS, isCompleted, resultFor } = require('./scoring');
 
 // Stats are ALWAYS derived from the matches table — never stored — so the
@@ -453,9 +453,38 @@ async function computeLadder() {
   }
   const bonusObj = {};
   for (const [k, v] of bonusByOwner) bonusObj[k] = v;
+
+  // World Cup winner odds across ALL teams still in it (drafted + outside clubs),
+  // so the drafted teams' chances are shown against the real field.
+  const aliveMap = new Map();
+  for (const m of allMatches) {
+    if (isCompleted(m.status) || !m.match_date) continue;
+    const tms = new Date(m.match_date).getTime();
+    if (!Number.isFinite(tms)) continue;
+    for (const [nm, opp] of [[m.home_team, m.away_team], [m.away_team, m.home_team]]) {
+      const key = nm.toLowerCase();
+      const cur = aliveMap.get(key);
+      if (!cur || tms < cur._t) {
+        aliveMap.set(key, {
+          team: nm, key, nextOppKey: opp.toLowerCase(),
+          roundsLeft: stageToRounds(m.round), owner: ownerByKey.get(key) || null, _t: tms,
+        });
+      }
+    }
+  }
+  const aliveTeams = [...aliveMap.values()].map(({ _t, ...x }) => x);
+
   let boxSeat = null;
   try {
-    boxSeat = titleRace({ koState, bonus: bonusObj });
+    const race = titleRace({ koState, bonus: bonusObj });
+    const wcAll = worldCupOdds(aliveTeams); // normalised, sorted desc
+    const top = wcAll.slice(0, 10);
+    const shown = new Set(top.map((x) => x.team.toLowerCase()));
+    const draftedExtra = wcAll.filter((x) => x.owner && !shown.has(x.team.toLowerCase()));
+    const eliminated = Object.values(koState)
+      .filter((s) => !s.alive)
+      .map((s) => ({ team: s.team, owner: s.owner, pct: 0, alive: false }));
+    boxSeat = race ? { players: race.players, wcFavourites: [...top, ...draftedExtra, ...eliminated] } : null;
   } catch (_) {
     boxSeat = null;
   }

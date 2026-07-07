@@ -184,4 +184,21 @@ function titleRace({ koState, bonus = {}, runs = 4000 }) {
   return value;
 }
 
-module.exports = { predict, titleRace, elo };
+// World Cup win odds for EVERY team still alive (drafted + outside clubs), from
+// Elo: P(win each remaining round) with the real next opponent for round 1, then
+// a generic ramp. Normalised so the whole field sums to ~100% (someone lifts it).
+// aliveTeams: [{ team, key, nextOppKey, roundsLeft, owner }]
+function worldCupOdds(aliveTeams) {
+  const raw = (aliveTeams || []).map((t) => {
+    const e = elo(t.key);
+    let p = roundProb(e, elo(t.nextOppKey));
+    for (let r = (t.roundsLeft || 1) - 1; r >= 1; r -= 1) p *= roundProb(e, STAGE_OPP[r] || 1820);
+    return { team: t.team, owner: t.owner || null, raw: p };
+  });
+  const tot = raw.reduce((a, b) => a + b.raw, 0) || 1;
+  return raw
+    .map((t) => ({ team: t.team, owner: t.owner, pct: t.raw / tot, alive: true }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
+module.exports = { predict, titleRace, elo, worldCupOdds };
