@@ -462,6 +462,9 @@ async function computeLadder() {
     const tms = new Date(m.match_date).getTime();
     if (!Number.isFinite(tms)) continue;
     for (const [nm, opp] of [[m.home_team, m.away_team], [m.away_team, m.home_team]]) {
+      // Skip bracket placeholders for unassigned future rounds (e.g. "Semifinal 1
+      // Winner", "Winner Group A") — they aren't real teams.
+      if (/\b(winner|runner|loser|tbd|group)\b/i.test(nm)) continue;
       const key = nm.toLowerCase();
       const cur = aliveMap.get(key);
       if (!cur || tms < cur._t) {
