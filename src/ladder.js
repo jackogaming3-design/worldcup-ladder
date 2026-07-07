@@ -423,50 +423,39 @@ async function computeLadder() {
     predictions,
   };
 
-  // --- Box Seat: live title-race simulation across all drafted teams ---
-  const groupByTeam = new Map();
-  for (const m of allMatches) {
-    if (!/group/i.test(m.round || '')) continue;
-    const hk = m.home_team.toLowerCase();
-    const ak = m.away_team.toLowerCase();
-    if (ownedKeys.has(hk)) {
-      if (!groupByTeam.has(hk)) groupByTeam.set(hk, new Set([hk]));
-      groupByTeam.get(hk).add(ak);
-    }
-    if (ownedKeys.has(ak)) {
-      if (!groupByTeam.has(ak)) groupByTeam.set(ak, new Set([ak]));
-      groupByTeam.get(ak).add(hk);
-    }
+  // --- Box Seat: live title-race sim over the REAL knockout bracket ---
+  // Each drafted team's current points + knockout state (alive? next opponent?
+  // how many rounds to the final?), so the model reflects who's actually still in.
+  const stageToRounds = (round) => {
+    const r = String(round || '').toLowerCase();
+    if (/round[ -]of[ -]32/.test(r)) return 5;
+    if (/round[ -]of[ -]16/.test(r)) return 4;
+    if (/quarter/.test(r)) return 3;
+    if (/semi/.test(r)) return 2;
+    if (/\bfinal\b/.test(r)) return 1;
+    return 3; // sensible default mid-bracket
+  };
+  const koState = {};
+  for (const t of teamLadder) {
+    const key = t.team.toLowerCase();
+    const up = allMatches
+      .filter((m) => !isCompleted(m.status) && m.match_date)
+      .filter((m) => m.home_team.toLowerCase() === key || m.away_team.toLowerCase() === key)
+      .sort((a, b) => new Date(a.match_date) - new Date(b.match_date))[0];
+    koState[key] = {
+      team: t.team,
+      owner: t.owner,
+      points: t.points,
+      alive: !!up,
+      nextOppKey: up ? (up.home_team.toLowerCase() === key ? up.away_team : up.home_team).toLowerCase() : null,
+      roundsLeft: up ? stageToRounds(up.round) : 0,
+    };
   }
-  const seenGroup = new Set();
-  const simGroups = [];
-  for (const set of groupByTeam.values()) {
-    const teamsKeys = [...set].sort();
-    const gid = teamsKeys.join('|');
-    if (seenGroup.has(gid)) continue;
-    seenGroup.add(gid);
-    const tset = new Set(teamsKeys);
-    const gms = allMatches.filter(
-      (m) => /group/i.test(m.round || '') &&
-        tset.has(m.home_team.toLowerCase()) && tset.has(m.away_team.toLowerCase())
-    );
-    simGroups.push({
-      teams: teamsKeys,
-      played: gms
-        .filter((m) => isCompleted(m.status) && m.home_goals != null && m.away_goals != null)
-        .map((m) => ({ h: m.home_team.toLowerCase(), a: m.away_team.toLowerCase(), hg: m.home_goals, ag: m.away_goals })),
-      remaining: gms
-        .filter((m) => !isCompleted(m.status))
-        .map((m) => ({ h: m.home_team.toLowerCase(), a: m.away_team.toLowerCase() })),
-    });
-  }
-  const ownersObj = {};
-  for (const [k, v] of ownerByKey) ownersObj[k] = v;
   const bonusObj = {};
   for (const [k, v] of bonusByOwner) bonusObj[k] = v;
   let boxSeat = null;
   try {
-    boxSeat = titleRace({ drafted: ownedKeys, owners: ownersObj, groups: simGroups, bonus: bonusObj });
+    boxSeat = titleRace({ koState, bonus: bonusObj });
   } catch (_) {
     boxSeat = null;
   }

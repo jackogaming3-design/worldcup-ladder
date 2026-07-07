@@ -398,12 +398,10 @@ function renderBoxSeat(b) {
       <div class="bs-nums"><span class="bs-win">${fmtWin(p.winPct)}</span><span class="bs-proj">${p.projectedPoints.toFixed(1)} proj pts</span></div>
     </div>`).join('');
   const favs = (b.wcFavourites || []).map((f) => `
-    <div class="bs-fav">
+    <div class="bs-fav${f.alive === false ? ' out' : ''}">
       <span class="bs-fav-team">${flag(f.team)} ${esc(f.team)}</span>
-      <span class="bs-fav-pct">${(f.pct * 100).toFixed(1)}%</span>
-      ${f.owner
-        ? `<span class="owner-chip bs-fav-owner" style="${ownerChipStyle(f.owner)}">${esc(f.owner)}</span>`
-        : '<span class="bs-fav-owner none">undrafted</span>'}
+      <span class="bs-fav-pct">${f.alive === false ? 'out' : fmtWin(f.pct)}</span>
+      <span class="owner-chip bs-fav-owner" style="${ownerChipStyle(f.owner)}">${esc(f.owner)}</span>
     </div>`).join('');
   el.innerHTML = `
     <div class="bs-grid">
@@ -412,11 +410,11 @@ function renderBoxSeat(b) {
         ${rows}
       </div>
       <div class="bs-card">
-        <div class="bs-card-title">🌍 Projected World Cup winner</div>
+        <div class="bs-card-title">🌍 World Cup winner — your teams</div>
         ${favs}
       </div>
     </div>
-    <div class="bs-note">🔮 model — simulates the rest of the tournament (team results + Golden Boot &amp; Playmaker bonus) thousands of times.</div>`;
+    <div class="bs-note">🔮 model — simulates the real knockout bracket (current points + Golden Boot &amp; Playmaker bonus) thousands of times. Knocked-out teams can't score, so they're out of the race.</div>`;
 }
 
 function renderGoldenBoot(boot) {
