@@ -77,6 +77,75 @@ function buildAward(rows, bonuses, ownerByKey) {
   return { tiers, bonusByOwner };
 }
 
+// "Stars Align" — for every player behind the leader, work out exactly what would
+// have to happen to overtake them: which teams must win, and how big a goals/
+// assists (bonus) swing is still needed. All derived from the live knockout state.
+function computeStarsAlign(playerLadder, koState, goldenBoot, playmaker) {
+  if (!playerLadder || playerLadder.length < 2) return null;
+  const leader = playerLadder[0];
+
+  const teamsByOwner = {};
+  for (const [key, s] of Object.entries(koState)) {
+    (teamsByOwner[s.owner] = teamsByOwner[s.owner] || []).push({ key, ...s });
+  }
+  const aliveOf = (owner) => (teamsByOwner[owner] || []).filter((t) => t.alive);
+
+  // Guaranteed knockout points: +3 for each pair of a player's OWN teams drawn
+  // against each other (one of them is certain to win that round).
+  function guaranteedKO(owner) {
+    const teams = aliveOf(owner);
+    const byKey = new Map(teams.map((t) => [t.key, t]));
+    const seen = new Set();
+    let g = 0;
+    for (const t of teams) {
+      if (seen.has(t.key)) continue;
+      const opp = byKey.get(t.nextOppKey);
+      if (opp && !seen.has(opp.key)) { g += 3; seen.add(t.key); seen.add(opp.key); }
+    }
+    return g;
+  }
+
+  // How much of a player's current award bonus is still "live" — i.e. earned by a
+  // tier player whose team is still in the tournament (so it can hold/grow rather
+  // than only being at risk). Zero means the bonus is frozen (all scorers out).
+  function liveBonus(owner) {
+    let live = 0;
+    for (const award of [goldenBoot, playmaker]) {
+      for (const tier of (award.tiers || [])) {
+        const has = tier.players.some((p) => p.owner === owner
+          && koState[String(p.team).toLowerCase()] && koState[String(p.team).toLowerCase()].alive);
+        if (has) live += tier.bonus;
+      }
+    }
+    return live;
+  }
+
+  const leaderFloor = leader.teamPoints + guaranteedKO(leader.player) + leader.awardBonus;
+  const MAX_BONUS = 14; // Golden Boot 5+2+1 + Playmaker 3+2+1
+
+  const rivals = playerLadder.slice(1).map((p) => {
+    const teams = aliveOf(p.player);
+    const maxGain = teams.reduce((s, t) => s + 3 * t.roundsLeft, 0);
+    const ceiling = p.teamPoints + maxGain + p.awardBonus;
+    const gap = leaderFloor - ceiling; // > 0 → still short even winning out; needs a bonus swing
+    const lb = liveBonus(p.player);
+    const maxSwing = (MAX_BONUS - p.awardBonus) + leader.awardBonus;
+    let status;
+    if (!teams.length) status = 'eliminated';           // no teams left (can't score again)
+    else if (gap <= 0) status = 'contender';            // can catch on results alone
+    else if (gap > maxSwing) status = 'eliminated';     // even a perfect bonus swing can't do it
+    else if (lb === 0) status = 'frozen';               // has a team, but the bonus can't move
+    else status = 'needs-swing';                        // a real (if slim) live path
+    return {
+      player: p.player, total: p.points, behind: leader.points - p.points,
+      aliveTeams: teams.map((t) => ({ team: t.team, roundsLeft: t.roundsLeft })),
+      ceiling, gap: Math.max(0, gap), liveBonus: lb, status,
+    };
+  });
+
+  return { leader: leader.player, leaderPoints: leader.points, leaderFloor, rivals };
+}
+
 async function computeLadder() {
   // Owned teams + their player.
   const teamsRes = await query(
@@ -492,10 +561,17 @@ async function computeLadder() {
     boxSeat = null;
   }
 
+  let starsAlign = null;
+  try {
+    starsAlign = computeStarsAlign(playerLadder, koState, goldenBoot, playmaker);
+  } catch (_) {
+    starsAlign = null;
+  }
+
   return {
     teamLadder, playerLadder, recentMatches, whatCouldHaveBeen,
     upcomingHighlight, playerNextMatches, goldenBoot, playmaker,
-    badBoy, droppedHead, socceroos, boxSeat,
+    badBoy, droppedHead, socceroos, boxSeat, starsAlign,
   };
 }
 

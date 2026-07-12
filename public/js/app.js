@@ -44,6 +44,7 @@ async function load() {
   renderNextUp(body.playerNextMatches);
   renderPlayerCards(body.playerLadder);
   renderBoxSeat(body.boxSeat);
+  renderStarsAlign(body.starsAlign);
   renderGoldenBoot(body.goldenBoot);
   renderPlaymaker(body.playmaker);
   renderBadBoy(body.badBoy);
@@ -417,6 +418,47 @@ function renderBoxSeat(b) {
       </div>
     </div>
     <div class="bs-note">🔮 model — simulates the real knockout bracket (current points + Golden Boot &amp; Playmaker bonus) thousands of times. Knocked-out teams can't score, so they're out of the race.</div>`;
+}
+
+function renderStarsAlign(sa) {
+  const el = $('#stars-align');
+  if (!sa || !sa.rivals || !sa.rivals.length) { el.innerHTML = ''; return; }
+  const lead = esc(sa.leader);
+  const intro = `<div class="sa-intro"><strong>${lead}</strong> leads on ${sa.leaderPoints}, with a floor of <strong>${sa.leaderFloor}</strong> — the lowest they can finish even in the worst case. To win, a chaser's total has to clear that. Here's the exact ask:</div>`;
+  const cards = (sa.rivals || []).map((r) => {
+    const teams = r.aliveTeams.length
+      ? r.aliveTeams.map((t) => `${flag(t.team)} ${esc(t.team)}`).join(' + ')
+      : '';
+    let badge, body;
+    if (r.status === 'contender') {
+      badge = '🟢 In the hunt';
+      body = `If <strong>${teams}</strong> win out, ${esc(r.player)} overtakes ${lead} on results alone — no bonus needed.`;
+    } else if (r.status === 'needs-swing') {
+      badge = '🟡 Needs the perfect storm';
+      body = `<ul class="sa-list">`
+        + `<li><strong>${teams}</strong> must win the whole World Cup 🏆</li>`
+        + `<li>${lead}'s finalist must <strong>lose the final</strong> (held to their floor)</li>`
+        + `<li>PLUS a <strong>+${r.gap}</strong> goals/assists swing — their players climbing the Golden Boot/Playmaker while ${lead}'s fade</li>`
+        + `</ul><div class="sa-note">Still live: their bonus players are on the pitch, so the swing is at least possible.</div>`;
+    } else if (r.status === 'frozen') {
+      badge = '🟠 All but gone';
+      body = `Even if <strong>${teams}</strong> win the World Cup, ${esc(r.player)} maxes out at <strong>${r.ceiling}</strong> vs ${lead}'s ${sa.leaderFloor} floor — needing a +${r.gap} bonus swing. But their award bonus is <strong>frozen</strong>: every one of their scorers/assisters is already knocked out, so it can't climb. Realistically done.`;
+    } else {
+      badge = '🔴 Eliminated';
+      body = r.aliveTeams.length
+        ? `Can't catch ${lead} — even winning out tops out at ${r.ceiling}, below the ${sa.leaderFloor} floor.`
+        : `Both teams knocked out — frozen on <strong>${r.total}</strong>, can't earn another point.`;
+    }
+    return `<div class="sa-card sa-${r.status}">
+      <div class="sa-head">
+        <span class="owner-chip" style="${ownerChipStyle(r.player)}">${esc(r.player)}</span>
+        <span class="sa-badge">${badge}</span>
+        <span class="sa-behind">${r.behind} behind</span>
+      </div>
+      <div class="sa-body">${body}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = intro + `<div class="sa-cards">${cards}</div>`;
 }
 
 function renderGoldenBoot(boot) {

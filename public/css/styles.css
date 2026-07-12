@@ -441,6 +441,22 @@ input:focus { outline: 2px solid var(--brand-2); outline-offset: 1px; border-col
 .bs-fav-owner { font-size: 0.7rem; }
 .bs-fav-owner.none { color: var(--muted); font-weight: 600; }
 .bs-fav-owner.outside { color: var(--muted); font-weight: 600; font-style: italic; }
+
+/* ---------- Stars Align ---------- */
+.sa-intro { font-size: 0.9rem; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+.sa-cards { display: grid; gap: 12px; }
+.sa-card { background: var(--surface); border: 1px solid var(--line); border-left-width: 4px; border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 15px; }
+.sa-card.sa-contender { border-left-color: #22c55e; }
+.sa-card.sa-needs-swing { border-left-color: #eab308; }
+.sa-card.sa-frozen { border-left-color: #f97316; }
+.sa-card.sa-eliminated { border-left-color: #ef4444; }
+.sa-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; flex-wrap: wrap; }
+.sa-badge { font-weight: 800; font-size: 0.82rem; }
+.sa-behind { margin-left: auto; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+.sa-body { font-size: 0.88rem; line-height: 1.5; }
+.sa-list { margin: 4px 0 0; padding-left: 20px; }
+.sa-list li { margin: 3px 0; }
+.sa-note { margin-top: 7px; font-size: 0.8rem; color: var(--muted); font-style: italic; }
 .bs-fav.out { opacity: 0.5; }
 .bs-fav.out .bs-fav-team { text-decoration: line-through; }
 .bs-fav.out .bs-fav-pct { color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.06em; }
